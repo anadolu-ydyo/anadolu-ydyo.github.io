@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Sınav Yönetimi</title><script>window.API_ADRESI = "https://script.google.com/macros/s/AKfycbyyHmiRU87lCRYJsZoiVGOv1wEZ0NsCQSYOmZny854s4eaqu6J1ImZTjrfoeJtqtQ/exec";</script><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: üstte kimlik bandı + deneme saati şeridi; altında seçilen görünüm (başlangıç, TV, öğrenci telefonu, hoca portalı, yönetim) */
+:root{
+  --bg:#EDF3F3; --surface:#FFFFFF; --ink:#0F2529; --muted:#55696C; --line:#CDDADB;
+  --accent:#0B6E7E; --accent-ink:#FFFFFF; --accent-soft:#DAEDEF;
+  --hl:#B86A00; --hl-soft:#FCEBCF;
+  --ok:#1B6E43; --ok-soft:#DDF0E4; --warn:#9A5800; --warn-soft:#FBEDD5; --bad:#AE2A20; --bad-soft:#F8E0DC;
+  --f-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1618; --surface:#122226; --ink:#E2EDEE; --muted:#94AAAD; --line:#25393D;
+  --accent:#5EC2D1; --accent-ink:#06191C; --accent-soft:#14343A;
+  --hl:#F2B260; --hl-soft:#3A2A12;
+  --ok:#63C28E; --ok-soft:#15301F; --warn:#E3AA4F; --warn-soft:#382A12; --bad:#EF8C82; --bad-soft:#3B1C19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1618; --surface:#122226; --ink:#E2EDEE; --muted:#94AAAD; --line:#25393D;
+  --accent:#5EC2D1; --accent-ink:#06191C; --accent-soft:#14343A;
+  --hl:#F2B260; --hl-soft:#3A2A12;
+  --ok:#63C28E; --ok-soft:#15301F; --warn:#E3AA4F; --warn-soft:#382A12; --bad:#EF8C82; --bad-soft:#3B1C19; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+.wrap{max-width:1200px;margin:0 auto}
+.band{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding-block:14px 10px}
+.band .eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.band h1{font-size:20px;margin:0;text-wrap:balance}
+.band nav{display:flex;flex-wrap:wrap;gap:6px}
+.band nav a{font-size:13px;color:var(--accent);text-decoration:none;padding:6px 10px;border-radius:7px;border:1px solid var(--line);background:var(--surface)}
+.band nav a.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.clockbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:18px}
+.clockbar .t{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:600}
+.clockbar .d{font-size:13px;color:var(--muted)}
+.clockbar .sp{flex:1 1 auto}
+.clockbar select,.clockbar .btn{width:auto}
+h2{font-size:18px;margin:0 0 10px;text-wrap:balance}
+h3{font-size:15px;margin:0 0 8px}
+p{margin:0 0 8px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.small{font-size:13px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.stack{display:flex;flex-direction:column;gap:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row.end{align-items:flex-end}
+.btn{font:inherit;font-weight:700;font-size:14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:9px 14px;cursor:pointer;line-height:1.2}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.sm{padding:5px 9px;font-size:13px;font-weight:600}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:var(--surface)}
+.btn.bad.ghost{background:transparent;color:var(--bad)}
+.btn.big{font-size:16px;padding:12px 18px}
+.btn[disabled]{opacity:.42;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+input[type=checkbox]{width:auto}
+label.f{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px;min-width:0}
+label.ck{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-acc{background:var(--accent-soft);color:var(--accent)} .p-mut{background:var(--bg);color:var(--muted);border:1px solid var(--line)} .p-hl{background:var(--hl-soft);color:var(--hl)}
+table{border-collapse:collapse;width:100%}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.note{padding:12px 14px;border-radius:9px;font-weight:700}
+.n-warn{background:var(--warn-soft);color:var(--warn)} .n-bad{background:var(--bad-soft);color:var(--bad)} .n-ok{background:var(--ok-soft);color:var(--ok)} .n-acc{background:var(--accent-soft);color:var(--accent)} .n-hl{background:var(--hl-soft);color:var(--hl)}
+.note p{margin:4px 0 0;font-weight:400;color:var(--ink)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tabs button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer}
+.tabs button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+/* başlangıç */
+.scn{display:flex;flex-direction:column;gap:8px}
+.scn .exp{font-size:13px;color:var(--muted)}
+.scn .no{font-family:var(--f-mono);font-size:12px;color:var(--accent);font-weight:600}
+/* TV */
+.tv{display:grid;gap:20px;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
+@media (max-width:860px){.tv{grid-template-columns:1fr}}
+.qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+#qr{background:#FFFFFF;padding:14px;border-radius:10px;line-height:0;min-height:40px}
+#qr img,#qr canvas{max-width:100%;height:auto}
+.code{font-family:var(--f-mono);font-size:58px;font-weight:600;letter-spacing:.12em;line-height:1}
+.bar{height:6px;width:240px;max-width:100%;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.calls{list-style:none;margin:0;padding:0}
+.calls li{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+.calls li.late{color:var(--hl)}
+.calls .tm{font-family:var(--f-mono);color:var(--muted);font-size:13px}
+.calls b{font-size:17px}
+/* telefon */
+.phone{max-width:430px;margin:0 auto;border:1px solid var(--line);border-radius:26px;padding:22px 18px;background:var(--surface)}
+.phone .big{font-size:26px;font-weight:700;line-height:1.2;text-wrap:balance}
+.res{border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px}
+.r-ok{background:var(--ok-soft);color:var(--ok)} .r-acc{background:var(--accent-soft);color:var(--accent)} .r-bad{background:var(--bad-soft);color:var(--bad)} .r-warn{background:var(--warn-soft);color:var(--warn)} .r-hl{background:var(--hl-soft);color:var(--hl)}
+.res p{margin:0;color:var(--ink)}
+.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:700}
+/* portal */
+.menu{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.menu button{font:inherit;text-align:left;display:flex;flex-direction:column;gap:4px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;cursor:pointer}
+.menu button b{color:var(--accent);font-size:17px}
+.menu button span{font-size:13px;color:var(--muted)}
+.login{max-width:440px;margin:0 auto}
+/* jüri */
+.jhead{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between}
+.pair{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.pair.now{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.pair.done{background:var(--bg)}
+.pair .ph{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;justify-content:space-between}
+.pair .ph b{font-size:16px}
+.mem{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.mem .nm{font-size:17px;font-weight:700}
+.mem.ghost .nm{text-decoration:line-through;color:var(--muted)}
+.crit{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
+.crit label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.crit input{font-family:var(--f-mono);font-size:16px;padding:7px 9px}
+.crit .hlb input{border-color:var(--hl);background:var(--hl-soft)}
+.crit .pv{font-size:12px;color:var(--hl);font-weight:700}
+.tot{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:14px}
+.tot .n{font-family:var(--f-mono);font-size:18px;font-weight:600}
+.reasons{font-size:13px;color:var(--bad)}
+.reasons li{margin:2px 0}
+/* yönetim */
+.board th,.board td{font-size:12px;padding:5px 6px;white-space:nowrap}
+.chip{display:block;font-size:12px;padding:3px 6px;border-radius:6px;margin:2px 0;background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.chip.run{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.chip.bad{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
+.chip.cl{color:var(--muted);border-style:dashed}
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.stat{border:1px solid var(--line);border-radius:9px;padding:8px 12px;background:var(--surface);min-width:120px}
+.stat b{display:block;font-family:var(--f-mono);font-size:22px}
+.stat span{font-size:12px;color:var(--muted)}
+.lists{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}
+.lists ul{margin:0;padding-left:18px;font-size:14px}
+.log{max-height:360px;overflow:auto;font-size:13px}
+.log div{padding:4px 0;border-bottom:1px solid var(--line)}
+.proj .jn{font-size:40px;font-weight:700;line-height:1.1}
+.proj .cur{font-size:28px;font-weight:700}
+.inline-confirm{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px 8px;border-radius:8px;background:var(--bad-soft);color:var(--bad);font-size:13px;font-weight:700}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>body{margin:0}.tvpage .code{font-size:96px}.tvpage .calls b{font-size:22px}.tvpage h2{font-size:28px}</style>
+</head>
+<body>
+<div class="wrap" lang="tr">
+  <header class="band"><div><div class="eyebrow">Anadolu Üniversitesi YDYO Hazırlık</div><h1>Sınav Yönetimi</h1></div><div class="row" id="ust" hidden><button class="btn sm ghost" data-act="cikis">Çıkış</button></div></header>
+  <div class="note n-bad" id="hata" hidden></div>
+  <main id="app" data-url=""><div class="panel muted">Yükleniyor…</div></main>
+</div>
+<script>
+/* Ortak.html – tüm sayfalarda kullanılan yardımcılar */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/* Sunucu çağrısı: Google adresinden açılınca google.script.run; dış sayfadan (GitHub Pages) açılınca çerezsiz fetch.
+   Çerezsiz istek, tarayıcıda birden fazla Google hesabı açık olduğunda Google'ın verdiği "dosya açılamıyor" hatasını önler. */
+const DIS_SAYFA = !(window.google && google.script && google.script.run);
+function run(fn, ...a) {
+  if (!DIS_SAYFA) return new Promise((ok, no) => google.script.run.withSuccessHandler(ok).withFailureHandler(no)[fn](...a));
+  // Otomatik yeniden deneme yok: not gönderme ve şifre denemesi iki kez işlenmesin.
+  return fetch(window.API_ADRESI, { method: 'POST', credentials: 'omit', redirect: 'follow', cache: 'no-store',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, a }) })
+    .then(r => { if (!r.ok) throw new Error('Sunucu yanıt vermedi (' + r.status + ').'); return r.json(); })
+    .then(j => { if (j && j.ok) return j.r; throw new Error((j && j.m) || 'Bilinmeyen hata.'); });
+}
+/* Dış sayfada şablon değerleri (k, c, o, url) adres satırından okunur. */
+(function () {
+  const app = document.getElementById('app'); if (!app || !DIS_SAYFA) return;
+  const p = new URLSearchParams(location.search);
+  ['k', 'c', 'o'].forEach(x => { if (!app.dataset[x] && p.get(x)) app.dataset[x] = p.get(x); });
+  if ('url' in app.dataset && !app.dataset.url) app.dataset.url = new URL('./', location.href).href;
+})();
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }, del(k) { try { localStorage.removeItem(k); } catch (e) { } },
+  sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, sset(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { } }, sdel(k) { try { sessionStorage.removeItem(k); } catch (e) { } }
+};
+const fmt = v => String(v).replace('.', ',');
+function editing() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $('#app').contains(a); }
+function hataGoster(e) { const m = (e && e.message) || String(e); const el = $('#hata'); if (el) { el.textContent = 'Bağlantı hatası: ' + m + ' Sayfayı yenileyin.'; el.hidden = false; } }
+
+/* Taslak notlar: HESAPLA'ya (writing'de "tamamlandı"ya) kadar yalnızca bu tarayıcıda tutulur, sonra tek seferde gönderilir. */
+const TASLAK = {};
+try { Object.assign(TASLAK, JSON.parse(store.sget('taslak') || '{}')); } catch (e) { }
+function taslakKaydet() { store.sset('taslak', JSON.stringify(TASLAK)); }
+function taslak(g, no) { return TASLAK[g + no] || (TASLAK[g + no] = { c: {} }); }
+function taslakSil(g, no) { delete TASLAK[g + no]; taslakKaydet(); }
+/** Sunucu görünümü + taslak birleşimi (yalnızca açık bentler ve açık özel durum için taslak geçerli). */
+function birlesik(v, g, no) {
+  const t = TASLAK[g + no], c = Object.assign({}, v.c); let oz = v.oz;
+  if (t && !v.sub && v.fin == null) { v.kr.forEach(k => { if (k.acik && t.c[k.k] !== undefined) c[k.k] = t.c[k.k] === '' ? undefined : Number(t.c[k.k]); }); if (v.ozAcik && t.oz !== undefined) oz = t.oz || null; }
+  const top = v.kr.reduce((a, k) => a + (Number.isInteger(c[k.k]) ? c[k.k] : 0), 0);
+  return { c, oz, top };
+}
+/** Not bloğu (speaking: g='S', writing: g='W'). v sunucudaki notGorunum_ çıktısıdır; eşin notları yalnızca fark/negotiation aşamasında gelir. */
+function notBlok(v, g, no, butonAd) {
+  if (v.fin != null) return `<div class="note n-ok">Not kesinleşti: ${v.fin === 'G' ? 'G (girmedi)' : `${v.fin} / ${v.max} · ${v.r100} / 100`}${v.avg != null && v.fin !== 'G' && v.avg !== v.fin ? ` <span class="small">(ortalama ${fmt(v.avg)} → ${v.fin})</span>` : ''}</div>`;
+  const ozAd = k => (v.ozler.find(o => o.k === k) || {}).ad || '';
+  const B = birlesik(v, g, no);
+  let durum = '';
+  if (v.neg && v.es) durum = `<div class="note n-hl">Negotiation gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
+  else if (v.tur > 1 && v.hl.length && v.es) durum = `<div class="note n-hl">Toplam notlarınız arasında 2 puandan fazla fark var, öğrencinin performansını yeniden değerlendirin.<p>Sizin toplamınız: <b>${v.top}</b> · Eşinizin toplamı: <b>${v.es.top}</b>. Yalnızca turuncu bentler değiştirilebilir.</p></div>`;
+  const kr = B.oz ? '' : `<div class="crit">${v.kr.map(c => { const hl = v.hl.includes(c.k); return `<label class="${hl ? 'hlb' : ''}">${esc(c.ad)} (0–${c.max})<input id="${g}-${no}-${c.k}" type="number" min="0" max="${c.max}" step="1" inputmode="numeric" value="${B.c[c.k] ?? ''}" ${c.acik ? '' : 'disabled'} data-not="${g}" data-no="${no}" data-k="${c.k}">${hl && v.es ? `<span class="pv">Eşiniz: ${v.es.c[c.k] ?? '—'}</span>` : ''}</label>`; }).join('')}</div>`;
+  const buton = butonAd ? `<button class="btn sm" data-act="${g === 'S' ? 'hesapla' : 'wKaydet'}" data-no="${no}" ${v.sub ? 'disabled' : ''}>${butonAd}</button>` : '';
+  return `<div class="stack" style="gap:8px">${durum}
+    <label class="f">Özel durum<select id="${g}-${no}-oz" data-not="${g}" data-no="${no}" data-oz="1" ${v.ozAcik ? '' : 'disabled'}><option value="">— yok (bent notu girilecek) —</option>${v.ozler.map(o => `<option value="${o.k}" ${B.oz === o.k ? 'selected' : ''}>${esc(o.ad)}${o.puan == null ? ' (G)' : ` (${o.puan})`}</option>`).join('')}</select></label>
+    ${kr}<div class="tot"><span>Sizin toplamınız: <span class="n" id="top-${g}-${no}">${B.oz ? '—' : B.top}</span> / ${v.max}</span>${v.sub ? '<span class="pill p-acc">Eşinizin notu bekleniyor</span>' : ''}${buton}<span class="reasons" id="msg-${g}-${no}"></span></div></div>`;
+}
+</script>
+
+<script>
+const URL0 = $('#app').dataset.url;
+let ot = store.sget('yon'), V = null, tab = 'canli', mesaj = '', gmesaj = '', dsv = '', tik = 0;
+document.addEventListener('input', e => { if (e.target.id === 'dsaat') dsv = e.target.value; });
+function vGiris() { return `<form class="panel login stack"><h2>Yönetim girişi</h2><label class="f">Yönetim şifresi<input id="pw" type="password" required></label>${gmesaj ? `<div class="note n-bad">${esc(gmesaj)}</div>` : ''}<button class="btn" type="submit">Giriş</button></form>`; }
+function vCanli() {
+  const head = `<tr><th>Jüri</th>${V.slotlar.map((s, i) => `<th>${s}${i === V.slotlar.length - 1 ? ' y' : ''}</th>`).join('')}</tr>`;
+  const rows = V.tablo.map(j => `<tr><td><b>${esc(j.ad)}</b><br><span class="muted">${esc(j.room)} · ${j.hocalar.map(esc).join(', ')}</span>${j.kapali ? `<br><span class="pill p-mut">${j.kapali}'den itibaren kapandı</span>` : ''}</td>${j.hucre.map(h => `<td>${h.cips.length ? h.cips.map(c => `<span class="chip ${c.c}" title="${esc(c.ad)}">${esc(c.t)}</span>`).join('') : (h.kapali ? '<span class="chip cl">kapalı</span>' : '')}</td>`).join('')}</tr>`).join('');
+  const L = (t, a) => `<div><h3>${t} (${a.length})</h3>${a.length ? `<ul>${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="small muted">Yok.</p>'}</div>`;
+  const DS = V.deneme ? `<div class="panel row" style="align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:42px;font-weight:700;letter-spacing:1px">DENEME SAATİ ${esc(V.deneme.saat)}</div>
+      <span class="pill p-acc">Gün ${V.deneme.gun} · hız ×${V.deneme.hiz == null ? 1 : V.deneme.hiz}</span>
+      ${[0, 1, 2, 5].map(h => `<button class="btn sm ${V.deneme.hiz === h ? '' : 'ghost'}" data-act="hiz" data-v="${h}">${h === 0 ? 'Durdur' : '×' + h}</button>`).join('')}
+      <input id="dsaat" placeholder="12:50" size="5" style="width:70px" value="${esc(dsv)}"><button class="btn sm ghost" data-act="saatAyarla">Saate atla</button>
+      <button class="btn sm ghost" data-act="gun" data-v="${V.deneme.gun === 1 ? 2 : 1}">Gün ${V.deneme.gun === 1 ? 2 : 1}'e geç</button></div>` : '';
+  return `<div class="stack">${DS}<div class="stats">${V.sayilar.map(([l, n]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
+    <div class="panel"><h3>Jüri ve slot tablosu · ${esc(V.gun)} · ${esc(V.saat)}</h3><div class="scroll"><table class="board">${head}${rows}</table></div>
+    <p class="small muted" style="margin-top:6px">Mavi: sınavda/sırada · yeşil: SINAV BİTTİ · kırmızı: gelmedi · kesikli: aktarıldı ya da jüri kapandı.</p></div>
+    <div class="panel lists">${L('Eş bekleyen', V.bekleyen)}${L('Aktarılan', V.aktarilan)}${L('Geç kalan – bekliyor (en az geç kalan üstte)', V.gec)}${L('Geç kaldı – sınava alınamadı', V.alinamadi)}</div>
+    ${V.uyarilar.length ? `<div class="panel"><h3>Not uyarıları</h3><ul>${V.uyarilar.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}</div>`;
+}
+function vHocalar() {
+  const ilk = V.hocalar.filter(h => h.ilk).length;
+  return `<div class="panel"><h3>Hocalar ve şifreler · ilk giriş yapan ${ilk} / ${V.hocalar.length}</h3><p class="small muted">Şifreler tuzlu özet olarak saklanır; kimse göremez. Geçici şifre, hoca ilk girişini yapana kadar görünür.</p>
+   ${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}
+   <div class="scroll"><table><thead><tr><th>Hoca</th><th>İlk giriş</th><th>Geçici şifre</th><th>Durum</th><th></th></tr></thead><tbody>${V.hocalar.map(h => `<tr><td><b>${esc(h.ad)}</b></td><td>${h.ilk ? '<span class="pill p-ok">Yapıldı</span>' : '<span class="pill p-warn">Bekleniyor</span>'}</td><td class="mono">${h.temp ? esc(h.temp) : '—'}</td><td>${h.kilit ? '<span class="pill p-bad">Kilitli</span>' : ''}</td>
+   <td><div class="row"><button class="btn sm ghost" data-act="sifirla" data-id="${h.id}">Şifre sıfırla</button><button class="btn sm ghost" data-act="yerine" data-id="${h.id}">Hoca yerine işlem</button></div></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function vWriting() {
+  return `<div class="panel"><h3>Writing zarfları</h3><div class="scroll"><table><thead><tr><th>Sınıf</th><th>First</th><th>Second</th><th>Kesinleşen</th></tr></thead><tbody>${V.zarflar.map(z => `<tr><td><b>${esc(z.cls)}</b></td><td>${esc(z.f)} ${z.fDone ? '✓' : ''}</td><td>${esc(z.s)} ${z.sDone ? '✓' : ''}</td><td class="mono">${z.kesin} / ${z.toplam}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function render() {
+  if (!V) { $('#ust').hidden = true; $('#app').innerHTML = vGiris(); return; }
+  $('#ust').hidden = false;
+  const T = [['canli', 'Canlı durum'], ['hocalar', 'Hocalar ve şifreler'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['kayit', 'Kayıt']];
+  let b = tab === 'canli' ? vCanli() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
+    : tab === 'sonuc' ? `<div class="panel stack"><p>Sınıf not listeleri tablo dosyasındaki "Speaking Sonuçları" ve "Writing Sonuçları" sayfalarına yazılır; oradan Excel olarak indirilir. Önce MehDer'in bilgisayarına kaydedilir, onaydan sonra AnaSİS hocalarına gönderilir.</p><div><button class="btn" data-act="sonuc">Sonuç sayfalarını şimdi yaz</button></div>${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}</div>`
+    : `<div class="panel log">${V.kayit.map(x => `<div>${esc(x)}</div>`).join('')}</div>`;
+  $('#app').innerHTML = `<div class="tabs">${T.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>` + b;
+}
+async function yukle() { if (!ot) { V = null; return render(); } try { const r = await run('apiYonetim', ot); if (r.err) { ot = null; store.sdel('yon'); V = null; } else V = r; render(); } catch (e) { hataGoster(e); } }
+document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''; try { const r = await run('apiYonetimGiris', $('#pw').value); if (r.err) gmesaj = r.err; else { ot = r.oturum; store.sset('yon', ot); } } catch (err) { hataGoster(err); } yukle(); });
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if (!b) return; const d = b.dataset;
+  if (d.act === 'tab') { tab = d.v; mesaj = ''; return render(); }
+  if (d.act === 'cikis') { await run('apiCikis', ot).catch(() => { }); store.sdel('yon'); ot = null; V = null; return render(); }
+  b.disabled = true;
+  try {
+    if (d.act === 'sifirla') { const ep = confirm('Yeni geçici şifre hocaya e-postayla da gönderilsin mi? (İptal: yalnızca ekranda göster)'); const r = await run('apiYonetimIslem', ot, 'sifirla', { id: d.id, eposta: ep }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
+    if (d.act === 'hiz') { const r = await run('apiYonetimIslem', ot, 'saat', { hiz: Number(d.v) }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
+    if (d.act === 'saatAyarla') { const s = ($('#dsaat') || {}).value || ''; if (/^\d{1,2}:\d{2}$/.test(s)) { const r = await run('apiYonetimIslem', ot, 'saat', { saat: s }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
+    if (d.act === 'gun') { const r = await run('apiYonetimIslem', ot, 'gun', { gun: Number(d.v) }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
+    if (d.act === 'yerine') { const r = await run('apiYonetimIslem', ot, 'yerine', { id: d.id }); if (r.hocaOturum) { window.open(`${URL0}?v=hoca&k=${encodeURIComponent(r.token)}&o=${encodeURIComponent(r.hocaOturum)}`, '_blank'); } }
+    if (d.act === 'sonuc') { const r = await run('apiYonetimIslem', ot, 'sonuc', {}); mesaj = r.mesaj || ''; }
+  } catch (err) { hataGoster(err); }
+  render();
+});
+setInterval(() => { tik++; if (V && (tab === 'canli' || tab === 'kayit') && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);
+yukle();
+</script>
+</body></html>
