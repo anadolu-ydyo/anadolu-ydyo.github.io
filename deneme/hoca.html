@@ -146,11 +146,31 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>body{margin:0}.tvpage .code{font-size:96px}.tvpage .calls b{font-size:22px}.tvpage h2{font-size:28px}</style>
+<style>
+/* 30.10.2026: dil seçimi, sorun bildirme, anket, mesajlar */
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
+textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
+.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.q{padding:10px 0;border-top:1px solid var(--line)}
+.lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
+.lik label input{position:absolute;opacity:0;pointer-events:none}
+.lik label.sec{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.msg{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);display:grid;gap:4px}
+.msg.acil{border:2px solid var(--bad);background:var(--bad-soft)}
+.msg .cv{margin-top:4px;padding:8px;border-radius:6px;background:var(--accent-soft)}
+.msg.kapali{opacity:.65}
+.tvpage .en{font-size:15px;opacity:.8;margin-top:-6px}
+.ozet td,.ozet th{font-size:13px;white-space:nowrap}.ozet td.m{white-space:normal;min-width:260px}
+.bar3{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:90px;background:var(--line)}.bar3 i{display:block}
+.bar3 .a{background:var(--ok)}.bar3 .b{background:var(--warn)}.bar3 .c{background:var(--bad)}
+</style>
 </head>
 <body>
 <div class="wrap" lang="tr">
   <header class="band"><div><div class="eyebrow">Anadolu Üniversitesi YDYO Hazırlık · Sınav Portalı</div><h1 id="baslik">Kişisel portal</h1></div>
-    <div class="row" id="ust" hidden><button class="btn sm ghost" data-act="pv" data-v="menu">Ana menü</button><button class="btn sm ghost" data-act="cikis">Çıkış</button></div></header>
+    <div class="row" id="ust" hidden><button class="btn sm bad ghost" data-act="sorunAc">Sorun yaşıyorum</button><button class="btn sm ghost" data-act="pv" data-v="menu">Ana menü</button><button class="btn sm ghost" data-act="cikis">Çıkış</button></div></header>
   <div class="note n-bad" id="hata" hidden></div>
   <main id="app" data-k="" data-o=""><div class="panel muted">Yükleniyor…</div></main>
 </div>
@@ -216,6 +236,11 @@ function notBlok(v, g, no, butonAd) {
 <script>
 const K = $('#app').dataset.k;
 let ot = $('#app').dataset.o || store.sget('ot:' + K), V = null, pv = 'menu', zarfAcik = null, giris = { asama: 'sifre', mesaj: '', onay: null, ad: '' }, armed = null, bekle = false;
+let sorun = { acik: false, mesaj: '', tamam: false }, girisMsj = [], hA = { l: [] }, hAMesaj = '';
+const SORUN_ADLARI = { giris: 'Giriş / şifre sorunu', liste: 'Gelen öğrenci listemde yok ya da yanlış öğrenci geldi', hesapla: 'Not girişi veya HESAPLA çalışmıyor',
+  fark: 'Fark / negotiation ekranında sorun', gelmedi: 'Öğrenci gelmedi ama "Gelmedi" düğmesi açılmadı', teknik: 'Derslik / teknik sorun (kamera, ses, internet)',
+  kagit: 'Zarftaki kâğıtlar listeyle uyuşmuyor (eksik ya da fazla)', tamam: 'Not girişi veya "Tamamlandı" çalışmıyor', acil: 'Acil durum / sağlık sorunu', diger: 'Diğer' };
+const OLCEK3 = ['Katılıyorum', 'Kısmen katılıyorum', 'Katılmıyorum'];
 const CKEY = 'cihaz:' + K;
 
 /* ---------- giriş ---------- */
@@ -227,7 +252,55 @@ function vGiris() {
     <label class="f">${giris.ilk ? 'Geçici şifre (e-postanızda)' : 'Şifre'}<input id="pw" type="password" autocomplete="current-password" required></label>
     <label class="ck"><input type="checkbox" id="rem"> Bu cihazı hatırla (30 gün)</label>
     ${giris.mesaj ? `<div class="note n-bad">${esc(giris.mesaj)}</div>` : ''}<button class="btn" type="submit">Giriş</button>
-    <p class="small muted">Şifrenizi unuttuysanız yönetimle görüşün; size yeni geçici şifre verilir.</p></form>`;
+    <p class="small muted">Şifrenizi unuttuysanız yönetimle görüşün; size yeni geçici şifre verilir.</p></form>
+    <div class="stack" style="max-width:420px;margin:14px auto 0">${sorun.acik ? vSorun() : `<div><button class="btn sm bad ghost" data-act="sorunAc">Sorun yaşıyorum</button></div>`}${vMesajlar(girisMsj)}</div>`;
+}
+/* ---------- sorun bildirme ---------- */
+function sorunListesi() {
+  if (!V) return ['giris', 'acil', 'diger'];
+  if (pv === 'speaking' || pv === 'proj') return ['giris', 'liste', 'hesapla', 'fark', 'gelmedi', 'teknik', 'acil', 'diger'];
+  if (pv === 'writing') return ['giris', 'kagit', 'tamam', 'fark', 'diger'];
+  return ['giris', 'liste', 'hesapla', 'fark', 'gelmedi', 'teknik', 'kagit', 'tamam', 'acil', 'diger'];
+}
+function vSorun() {
+  if (sorun.tamam) return `<div class="panel stack"><div class="note ${sorun.acil ? 'n-bad' : 'n-ok'}">Mesajınız yönetime iletildi. Cevap bu ekranda görünecek.${sorun.acil ? '<br><b>Acil durumda kayıt masasına da haber verin.</b>' : ''}</div><div><button class="btn sm ghost" data-act="sorunKapat">Tamam</button></div></div>`;
+  return `<form class="panel stack" data-f="sorun"><h3 style="margin:0">Sorun yaşıyorum</h3><div class="secim">${sorunListesi().map(k => `<label class="ck"><input type="radio" name="hkat" value="${k}"> ${esc(SORUN_ADLARI[k])}</label>`).join('')}</div>
+    <label class="f">Kısa açıklama (Diğer seçilirse zorunlu)<textarea id="hmetin" rows="3" maxlength="600"></textarea></label>
+    ${sorun.mesaj ? `<div class="note n-bad">${esc(sorun.mesaj)}</div>` : ''}<div class="row"><button class="btn" type="submit">Gönder</button><button class="btn ghost" type="button" data-act="sorunKapat">Vazgeç</button></div></form>`;
+}
+function vMesajlar(L, hepsi) {
+  const l = (L || []).filter(m => hepsi || m.durum !== 'cozuldu'); if (!l.length) return '';
+  const dd = { acik: 'Cevap bekleniyor', cevap: 'Cevaplandı', cozuldu: 'Çözüldü' };
+  return `<div class="panel stack"><h3 style="margin:0">Mesajlarım</h3>${l.map(m => `<div class="msg ${m.acil ? 'acil' : ''}"><div class="small muted">${esc(m.saat)} · ${esc(m.katAd)} · <b>${dd[m.durum] || m.durum}</b></div>${m.metin ? `<div>${esc(m.metin)}</div>` : ''}
+    ${m.cev.map(c => `<div class="cv"><div class="small muted">Yönetim · ${esc(c.saat)}</div><div>${esc(c.metin)}</div></div>`).join('')}</div>`).join('')}</div>`;
+}
+/* ---------- görüş ve öneri anketi ---------- */
+function anketKarti(tur) {
+  if (!V.anket || V.anket[tur] !== 'acik') return V.anket && V.anket[tur] === 'tamam' ? `<div class="note n-ok">${tur === 'S' ? 'Speaking' : 'Writing'} görüş ve öneri anketini doldurdunuz. Teşekkürler.</div>` : '';
+  return `<div class="note n-hl">${tur === 'S' ? 'Jürinizdeki sınavlar tamamlandı.' : 'Writing grading göreviniz tamamlandı.'} Lütfen kısa görüş ve öneri anketini doldurun.<div class="row" style="margin-top:8px"><button class="btn sm" data-act="pv" data-v="anket${tur}">Anketi doldur</button></div></div>`;
+}
+function hRad(ad, v, etiket, sec) { return `<label class="${sec ? 'sec' : ''}"><input type="radio" name="${ad}" value="${v}" ${sec ? 'checked' : ''}>${esc(etiket)}</label>`; }
+function hIzin(ad, val) { return `<div class="small" style="margin-top:6px">Bu konuda isminizi okul yönetimine iletelim mi?</div><div class="lik">${hRad(ad, '1', 'Evet', val === true)}${hRad(ad, '0', 'Hayır', val === false)}</div>`; }
+function vAnket(tur) {
+  const A = V.anketler[tur], a = hA, n = A.madde.length;
+  if (V.anket[tur] === 'tamam') return `<div class="panel">${anketKarti(tur)}</div>`;
+  if (V.anket[tur] !== 'acik') return '<div class="panel">Anket, görevleriniz tamamlanınca açılır.</div>';
+  return `<form class="panel stack" data-f="hanket" data-tur="${tur}"><h2 style="margin:0">${tur === 'S' ? 'Speaking' : 'Writing'} · görüş ve öneri anketi</h2>
+    <p class="small muted">Cevaplarınız özet olarak raporlanır. Yazdığınız görüşlerde isminizin okul yönetimine iletilip iletilmeyeceğini siz seçersiniz.</p>
+    ${A.madde.map((m, i) => `<div class="q"><div>${i + 1}. ${esc(m)}</div><div class="lik">${OLCEK3.map((o, v) => hRad('hm' + i, v, o, a.l[i] === v)).join('')}</div></div>`).join('')}
+    <div class="q"><div>${n + 1}. ${esc(A.sorun)}</div><div class="lik">${hRad('hsorun', '1', 'Evet', a.sorun === true)}${hRad('hsorun', '0', 'Hayır', a.sorun === false)}</div>
+      ${a.sorun ? `<label class="f" style="margin-top:6px">Kısaca açıklayın<textarea id="haSorun" rows="3" maxlength="1000">${esc(a.sorunMetin || '')}</textarea></label>${hIzin('hsIzin', a.sorunIzin)}` : ''}</div>
+    <div class="q"><div>${n + 2}. ${esc(A.diger)} <span class="small muted">(isteğe bağlı)</span></div><textarea id="haDiger" rows="3" maxlength="1000">${esc(a.diger || '')}</textarea>${(a.diger || '').trim() ? hIzin('hdIzin', a.digerIzin) : ''}</div>
+    ${hAMesaj ? `<div class="note n-bad">${esc(hAMesaj)}</div>` : ''}<div><button class="btn" type="submit">Anketi gönder</button></div></form>`;
+}
+function hAnketOku(n) {
+  const sec = k => { const x = document.querySelector(`input[name="${k}"]:checked`); return x ? Number(x.value) : null; };
+  for (let i = 0; i < n; i++) { const v = sec('hm' + i); if (v != null) hA.l[i] = v; }
+  const s = sec('hsorun'); if (s != null) hA.sorun = s === 1;
+  if ($('#haSorun')) hA.sorunMetin = $('#haSorun').value;
+  if ($('#haDiger')) hA.diger = $('#haDiger').value;
+  const si = sec('hsIzin'); if (si != null) hA.sorunIzin = si === 1;
+  const di = sec('hdIzin'); if (di != null) hA.digerIzin = di === 1;
 }
 /* ---------- portal ---------- */
 function vMenu() {
@@ -235,7 +308,9 @@ function vMenu() {
     <button data-act="pv" data-v="gorev"><b>Yaklaşan görevlerim</b><span>Gözetmenlik, jüri, writing grading ve yedeklik; tarih, saat, derslik</span></button>
     <button data-act="pv" data-v="speaking"><b>Speaking not girişi</b><span>Sınav günü jüri ekranı ve not girişi</span></button>
     <button data-act="pv" data-v="writing"><b>Writing grading</b><span>Değerlendireceğiniz zarflar (first / second)</span></button>
-    <button data-act="pv" data-v="gecmis"><b>Geçmiş görevler</b><span>Salt okunur</span></button></div>`;
+    <button data-act="pv" data-v="gecmis"><b>Geçmiş görevler</b><span>Salt okunur</span></button>
+    ${V.anket && V.anket.S && V.anket.S !== 'bekle' ? `<button data-act="pv" data-v="anketS"><b>Speaking görüş ve öneri anketi</b><span>${V.anket.S === 'tamam' ? 'Dolduruldu – teşekkürler' : 'Jüri göreviniz tamamlandı; lütfen doldurun'}</span></button>` : ''}
+    ${V.anket && V.anket.W && V.anket.W !== 'bekle' ? `<button data-act="pv" data-v="anketW"><b>Writing görüş ve öneri anketi</b><span>${V.anket.W === 'tamam' ? 'Dolduruldu – teşekkürler' : 'Writing göreviniz tamamlandı; lütfen doldurun'}</span></button>` : ''}</div>`;
 }
 function vGorev() {
   const G = V.gorevler;
@@ -269,13 +344,13 @@ function vJuri(proj) {
   return `<div class="stack"><div class="panel jhead"><div><div class="small muted">${esc(J.gun)} · ${esc(J.lv)} düzeyi (${J.max} puan) · saat ${esc(V.saat)}</div><h2 style="margin:0">${esc(J.ad)} · Derslik ${esc(J.room)}</h2><div class="small muted">Eşiniz: ${esc(J.es)}. Not girişi kör yapılır: HESAPLA'ya kadar eşinizin notlarını görmezsiniz.</div></div>
     <div class="row"><button class="btn sm ghost" data-act="pv" data-v="proj">Projeksiyon ekranını aç</button></div></div>
     ${J.kapali ? `<div class="note n-acc">Bu jüride sınavlar tamamlanmıştır; size yeni öğrenci gönderilmeyecektir. Mevcut çiftinizin sınavını ve not girişini bitirip SINAV BİTTİ'ye bastıktan sonra ayrılabilirsiniz.</div>` : ''}${ek}
-    <div class="grid g2">${kart}</div></div>`;
+    ${anketKarti('S')}<div class="grid g2">${kart}</div></div>`;
 }
 function vWriting() {
   const Z = V.zarflar;
   if (!Z.length) return '<div class="panel">Bu sınavda writing grading göreviniz yok.</div>';
   const z = Z.find(x => x.cls === zarfAcik);
-  if (!z) return `<div class="grid g2">${Z.map(z => { const st = z.ikisi ? '<span class="pill p-ok">İki değerlendirme tamamlandı</span>' : z.ben ? `<span class="pill p-ok">${z.rol} grading tamamlandı</span>` : (z.side === 'b' && !z.fDone ? '<span class="pill p-mut">First grading sürüyor</span>' : `<span class="pill p-warn">${z.rol} grading bekliyor</span>`);
+  if (!z) return anketKarti('W') + `<div class="grid g2">${Z.map(z => { const st = z.ikisi ? '<span class="pill p-ok">İki değerlendirme tamamlandı</span>' : z.ben ? `<span class="pill p-ok">${z.rol} grading tamamlandı</span>` : (z.side === 'b' && !z.fDone ? '<span class="pill p-mut">First grading sürüyor</span>' : `<span class="pill p-warn">${z.rol} grading bekliyor</span>`);
     return `<div class="panel stack" style="gap:8px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">${esc(z.cls)} · ${z.rol} grading</h3>${st}</div><p class="small muted">Son: ${esc(z.son || '')}${z.neg ? ` · negotiation ${esc(z.neg)}'e kadar` : ''}</p><div><button class="btn sm" data-act="zarf" data-c="${esc(z.cls)}">Zarfı aç</button></div></div>`; }).join('')}</div>`;
   const info = z.side === 'b' ? `<div class="note n-acc">Partneriniz (first grader): ${esc(z.es.ad)} · ${esc(z.es.tel)}<p>Partnerinizi arayın ve negotiation için görüşme gün ve saatini belirleyin. Negotiation aralığı: ${esc(z.neg || '')}'e kadar. First grader'ın notları size gösterilmez.</p></div>`
     : z.ikisi ? `<div class="note n-acc">Partneriniz (second grader): ${esc(z.es.ad)} · ${esc(z.es.tel)}</div>` : `<p class="small muted">Kâğıtlara not yazmayın; notlar yalnızca sisteme girilir. Son: ${esc(z.son || '')}.</p>`;
@@ -296,8 +371,10 @@ function render(force) {
   let b = '';
   if (pv === 'gorev') b = vGorev(); else if (pv === 'speaking') b = vJuri(false); else if (pv === 'proj') b = vJuri(true); else if (pv === 'writing') b = vWriting();
   else if (pv === 'gecmis') b = '<div class="panel"><h3>Geçmiş görevler</h3><p class="muted">Tamamlanan sınav görevleriniz sınav döneminden sonra burada salt okunur olarak listelenir.</p></div>';
+  else if (pv === 'anketS' || pv === 'anketW') b = vAnket(pv.slice(-1));
   else b = vMenu();
-  $('#app').innerHTML = (V.adm ? '<div class="note n-hl" style="margin-bottom:14px">Yönetim adına işlem yapıyorsunuz. Girilen notlar kayıtta "yönetim" olarak görünür.</div>' : '') + b;
+  const ust = (sorun.acik ? vSorun() : '') + vMesajlar(V.msj, pv === 'menu');
+  $('#app').innerHTML = (V.adm ? '<div class="note n-hl" style="margin-bottom:14px">Yönetim adına işlem yapıyorsunuz. Girilen notlar kayıtta "yönetim" olarak görünür.</div>' : '') + (ust ? `<div class="stack" style="margin-bottom:14px">${ust}</div>` : '') + b;
 }
 /* ---------- sunucu ---------- */
 async function yukle() {
@@ -306,7 +383,9 @@ async function yukle() {
     const c = store.get(CKEY);
     if (c) { const r = await run('apiHocaCihaz', K, c); if (r.oturum) { ot = r.oturum; store.sset('ot:' + K, ot); return yukle(); } store.del(CKEY); }
     const b = await run('apiHocaBilgi', K); if (b.err) { $('#app').innerHTML = `<div class="panel">${esc(b.err)}</div>`; return; }
-    giris.ad = b.ad; giris.ilk = b.ilk; V = null; render(true);
+    giris.ad = b.ad; giris.ilk = b.ilk; V = null;
+    try { girisMsj = (await run('apiHocaMesajlar', K)).m || []; } catch (e) { }
+    render(true);
   } catch (e) { hataGoster(e); }
 }
 async function islem(ad, a, msgId, basarili) {
@@ -316,6 +395,21 @@ async function islem(ad, a, msgId, basarili) {
 function alertKutusu(m) { const h = $('#hata'); h.textContent = m; h.hidden = false; setTimeout(() => h.hidden = true, 6000); }
 document.addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target.dataset.f; giris.mesaj = '';
+  if (f === 'sorun') {
+    const kat = (e.target.querySelector('input[name=hkat]:checked') || {}).value, metin = $('#hmetin').value.trim(); sorun.mesaj = '';
+    if (!kat) sorun.mesaj = 'Bir seçenek seçin.'; else if (kat === 'diger' && !metin) sorun.mesaj = 'Kısa bir açıklama yazın.';
+    else { try { const r = await run('apiHocaSorun', ot || null, K, kat, metin); if (r.err) sorun.mesaj = r.err; else { sorun.tamam = true; sorun.acil = kat === 'acil'; if (V) V.msj = r.m; else girisMsj = r.m; } } catch (err) { hataGoster(err); } }
+    return render(true);
+  }
+  if (f === 'hanket') {
+    const tur = e.target.dataset.tur, A = V.anketler[tur], n = A.madde.length; hAnketOku(n); hAMesaj = '';
+    if (hA.l.filter(x => x != null).length !== n || hA.sorun == null) hAMesaj = 'Lütfen bütün maddeleri cevaplayın.';
+    else if (hA.sorun && !(hA.sorunMetin || '').trim()) hAMesaj = 'Yaşadığınız sorunu kısaca açıklayın.';
+    else if ((hA.sorun && hA.sorunIzin == null) || ((hA.diger || '').trim() && hA.digerIzin == null)) hAMesaj = 'İsim sorusunu da cevaplayın.';
+    else { try { const r = await run('apiHocaAnket', ot, tur, { l: hA.l, sorun: hA.sorun, sorunMetin: hA.sorunMetin || '', sorunIzin: !!hA.sorunIzin, diger: hA.diger || '', digerIzin: !!hA.digerIzin, dil: 'tr' });
+      if (r.err === 'OTURUM') { ot = null; return yukle(); } if (r.err) hAMesaj = r.err; else { V = r.v; hA = { l: [] }; } } catch (err) { hataGoster(err); } }
+    return render(true);
+  }
   try {
     if (f === 'giris') {
       const r = await run('apiHocaGiris', K, $('#pw').value, $('#rem').checked); giris.rem = $('#rem').checked;
@@ -332,7 +426,9 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; const d = b.dataset;
   if (d.act !== 'arm' && d.act !== 'gelmedi') armed = null;
   switch (d.act) {
-    case 'pv': pv = d.v; zarfAcik = null; return render(true);
+    case 'pv': pv = d.v; zarfAcik = null; hAMesaj = ''; if (pv !== 'anketS' && pv !== 'anketW') hA = { l: [] }; return render(true);
+    case 'sorunAc': sorun = { acik: true, mesaj: '', tamam: false }; window.scrollTo(0, 0); return render(true);
+    case 'sorunKapat': sorun = { acik: false, mesaj: '', tamam: false }; return render(true);
     case 'cikis': await run('apiCikis', ot).catch(() => { }); store.sdel('ot:' + K); store.del(CKEY); ot = null; V = null; pv = 'menu'; return yukle();
     case 'arm': armed = d.key; return render(true);
     case 'vazgec': return render(true);
@@ -347,6 +443,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('change', e => {
   const el = e.target, d = el.dataset;
+  const hf = el.closest('form[data-f=hanket]'); if (hf) { hAnketOku(V.anketler[hf.dataset.tur].madde.length); if (el.tagName === 'TEXTAREA') return; return render(true); }
   if (d.not) {
     const t = taslak(d.not, d.no);
     if (d.oz) { t.oz = el.value; taslakKaydet(); return render(true); }
@@ -361,8 +458,18 @@ document.addEventListener('change', e => {
   if (d.wabs) return islem('wGirmedi', { no: d.wabs, v: el.checked });
 });
 function gonderilecek(g, no) { const t = TASLAK[g + no]; return t ? { no, c: t.c, oz: t.oz } : { no }; }
+document.addEventListener('input', e => {
+  if (e.target.id === 'haDiger') { const vardi = !!(hA.diger || '').trim(); hA.diger = e.target.value; if (vardi !== !!hA.diger.trim()) { const f = e.target.closest('form'); hAnketOku(V.anketler[f.dataset.tur].madde.length); render(true); const el = $('#haDiger'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
+});
 document.addEventListener('focusout', () => setTimeout(() => { if (bekle && !editing()) render(); }, 0));
-setInterval(async () => { if (!ot || !V || !(pv === 'speaking' || pv === 'proj')) return; try { const r = await run('apiHoca', ot); if (!r.err) { V = r; render(); } } catch (e) { } }, 5000);
+let hTik = 0;
+setInterval(async () => {
+  hTik++;
+  if (!V) { if (girisMsj.some(m => m.durum === 'acik') && hTik % 3 === 0) { try { girisMsj = (await run('apiHocaMesajlar', K)).m || []; render(); } catch (e) { } } return; }
+  const canli = pv === 'speaking' || pv === 'proj', bekleyen = (V.msj || []).some(m => m.durum === 'acik');
+  if (!ot || !(canli || (bekleyen && hTik % 3 === 0) || hTik % 12 === 0)) return;
+  try { const r = await run('apiHoca', ot); if (!r.err) { V = r; render(); } } catch (e) { }
+}, 5000);
 yukle();
 </script>
 </body></html>

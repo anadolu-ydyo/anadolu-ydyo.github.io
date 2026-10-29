@@ -146,10 +146,30 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>body{margin:0}.tvpage .code{font-size:96px}.tvpage .calls b{font-size:22px}.tvpage h2{font-size:28px}</style>
+<style>
+/* 30.10.2026: dil seçimi, sorun bildirme, anket, mesajlar */
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
+textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
+.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.q{padding:10px 0;border-top:1px solid var(--line)}
+.lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
+.lik label input{position:absolute;opacity:0;pointer-events:none}
+.lik label.sec{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.msg{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);display:grid;gap:4px}
+.msg.acil{border:2px solid var(--bad);background:var(--bad-soft)}
+.msg .cv{margin-top:4px;padding:8px;border-radius:6px;background:var(--accent-soft)}
+.msg.kapali{opacity:.65}
+.tvpage .en{font-size:15px;opacity:.8;margin-top:-6px}
+.ozet td,.ozet th{font-size:13px;white-space:nowrap}.ozet td.m{white-space:normal;min-width:260px}
+.bar3{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:90px;background:var(--line)}.bar3 i{display:block}
+.bar3 .a{background:var(--ok)}.bar3 .b{background:var(--warn)}.bar3 .c{background:var(--bad)}
+</style>
 </head>
 <body>
 <div class="wrap" lang="tr" style="max-width:520px">
-  <header class="band"><div><div class="eyebrow">Anadolu Üniversitesi YDYO Hazırlık</div><h1>Speaking Sınavı</h1></div></header>
+  <header class="band"><div><div class="eyebrow" id="eyebrow">Anadolu Üniversitesi YDYO Hazırlık</div><h1 id="baslik">Speaking Sınavı</h1></div></header>
   <div class="note n-bad" id="hata" hidden></div>
   <main id="app" data-c=""><div class="phone muted">Yükleniyor…</div></main>
 </div>
@@ -213,48 +233,309 @@ function notBlok(v, g, no, butonAd) {
 </script>
 
 <script>
+/* OgrenciDil.html – öğrenci ekranı metinleri: Türkçe, İngilizce, Rusça (30.10.2026).
+   Rusça metinler gerçek sınavdan önce Rusça hocası tarafından kontrol edilecek (Word dosyası: Öğrenci Ekranı ve Anket Metinleri TR-EN-RU). */
+const DIL = {
+  tr: {
+    ad: 'Türkçe', eyebrow: 'Anadolu Üniversitesi YDYO Hazırlık', baslik: 'Speaking Sınavı', dilSec: 'Dil seçin',
+    girisBaslik: 'Speaking sınavına giriş', no: 'Öğrenci numarası', kod: "TV'deki 4 haneli kod", giris: 'Giriş yap', bekleyin: 'Bekleyin…',
+    telefonYok: "Telefonun yoksa ya da giriş yapamıyorsan kantin tarafındaki TV'nin önündeki kayıt masasına git.",
+    e_kod: "Kod hatalı ya da süresi geçmiş. TV'deki QR kodunu yeniden okut ya da güncel kodu yaz.",
+    e_liste: 'Bu numara sınav listesinde yok. Numaranı kontrol et ya da kayıt masasına git.', e_gunyok: 'Bugün speaking sınavı yok.',
+    yanlisGun: (g, t, s) => `Senin sınavın: ${g}${t ? ' (' + t + ')' : ''}, saat ${s}. Bugün sınavın yok.`,
+    grup: 'grup', bekle_b: 'Eşleştirme bekleniyor', bekle_m: s => `Grup saatin: ${s}. Eşin okuttuğunda jürin ve dersliğin burada görünecek.`,
+    erken: 'Erken girmeye hazırım', erkenKaldir: '"Erken girmeye hazırım" işaretini kaldır', erkenNot: 'Erken girmeye hazırsan, önceki grupta boş yer olursa çağrılırsın.',
+    trans_b: 'Eşleştirme yapılamadı', trans_m: s => `Bir sonraki slotta (${s}) gireceksin. Beklemeye devam et; eşin belirlenince jürin burada görünecek.`,
+    juri: (lv, n, r) => `${lv} · Jüri ${n} · Derslik ${r}`, saat: 'Saat', es: 'Eşin', tek: 'Tek başına gireceksin',
+    atandi_m: 'Dersliğin önünde bekle; jüri seni çağıracak.', gecikme: 'Jüriniz birkaç dakika gecikecek, kapıda bekleyin.',
+    sinavda_b: 'Sınavdasın', juriHocalari: 'Jüri hocaları',
+    gec_b: 'Sınava geç kaldın', gec_m: s => `Bugün saat ${s}'e kadar eğer boş jüri olursa sınava çağırılabilirsin. Bu nedenle cep telefonunda sınav ekranını takip et. Ancak boş jüri olmazsa sınava alınamazsın.`,
+    alinamadi_b: 'Bugün boş jüri olmadığı için sınava alınamadın', red_b: 'Sınava geç kaldın; bugün sınava alınamazsın',
+    gelmedi_b: 'Jüri seni "Gelmedi" olarak işaretledi', gelmedi_m: 'Bir yanlışlık varsa hemen kayıt masasına git.',
+    bitti_b: 'Sınavın tamamlandı', bitti_bekle: 'Notun, düzeyindeki bütün sınavlar bitip yönetim yayımlayınca burada görünecek.',
+    not_b: 'Speaking notun', anasis: "Kesin sonuç AnaSİS'te duyurulacaktır. Notunuzu AnaSİS'ten kontrol edin.",
+    yenilenir: 'Bu ekran kendiliğinden yenilenir; kapatma.', baskaOgr: 'Bu telefonda başka öğrenci',
+    sorunBtn: 'Sorun yaşıyorum / Yardım istiyorum', sorunBaslik: 'Sorununu seç', aciklama: 'Kısa açıklama (isteğe bağlı)', aciklamaZ: 'Kısa açıklama (zorunlu)',
+    yazDil: 'Türkçe, İngilizce ya da Rusça yazabilirsin.', gonder: 'Gönder', vazgec: 'Vazgeç',
+    gonderildi: 'Mesajın yönetime iletildi. Cevap bu ekranda görünecek.', acilNot: 'Hemen kayıt masasına git.',
+    mesajlar: 'Mesajların', d_acik: 'Cevap bekleniyor', d_cevap: 'Cevaplandı', d_cozuldu: 'Çözüldü', yonetim: 'Yönetim',
+    e_sinir: 'Cevap bekleyen 3 mesajın var. Cevap gelince yeni mesaj gönderebilirsin.', e_numara: 'Önce öğrenci numaranı yaz.',
+    e_aciklama: 'Kısa bir açıklama yaz.', e_sec: 'Bir seçenek seç.', e_sinavda: 'Sınavdasın; bildirim kapalı.', e_yogun: 'Çok fazla bildirim var. Kayıt masasına git.',
+    sorun: { kod: 'Kodu girdim, kabul edilmiyor', numara: 'Numaram listede görünmüyor', gun: 'Ekranda yanlış gün ya da düzey görünüyor',
+      bekleme: 'Uzun süredir bekliyorum, jüri bilgisi gelmedi', derslik: 'Dersliği bulamıyorum', es: 'Eşim gelmedi ya da eşimi bulamıyorum',
+      acil: 'Acil durum / sağlık sorunu', diger: 'Diğer' },
+    anketBaslik: 'Sınav sonu anketi',
+    anketUst1: 'Anketi tamamladıktan sonra konuşma sınavı notunu görebilirsin. Vereceğin cevaplar konuşma sınavı notunu etkilemez.',
+    anketUst2: 'Cevapların özet olarak raporlanır. Yazdığın görüşlerde isminin okul yönetimine iletilip iletilmeyeceğini sen seçersin.',
+    olcek: ['Katılıyorum', 'Kısmen katılıyorum', 'Katılmıyorum'], evet: 'Evet', hayir: 'Hayır',
+    madde: ['Sınav günü yönlendirmeler (QR, telefon ekranı, TV) anlaşılırdı.', 'Bekleme sürem makuldü.', 'Jüri ve sınav ortamı düzenli ve sınav için uygundu.',
+      'Sınav sırasında hocalar yardımcı ve güler yüzlüydü.', 'Sınav sırasında hocaların tavırları motivasyonumu olumsuz etkiledi.',
+      'Sınav soruları/görevleri derste çalıştıklarıma uygundu.', 'Konuşmalarımın kamera kaydına alınması strese girmeme neden oldu.',
+      'Konuşmalarımın kamera kaydına alınması beni olumsuz etkilemedi.'],
+    a_sorun: 'Bazı sorunlar yaşadım.', a_sorunAcikla: 'Kısaca açıkla', a_diger: 'Diğer görüş ve önerilerim', istege: 'isteğe bağlı',
+    isimSor: 'Bu konuda isminizi okul yönetimine iletelim mi?', anketGonder: 'Anketi gönder ve notumu göster',
+    e_anket: 'Lütfen bütün maddeleri cevapla.', e_izin: 'İsim sorusunu da cevapla.', e_sorunMetin: 'Yaşadığın sorunu kısaca açıkla.'
+  },
+  en: {
+    ad: 'English', eyebrow: 'Anadolu University · Preparatory Programme', baslik: 'Speaking Exam', dilSec: 'Choose language',
+    girisBaslik: 'Speaking exam check-in', no: 'Student number', kod: '4-digit code on the TV screen', giris: 'Check in', bekleyin: 'Please wait…',
+    telefonYok: 'If you have no phone or cannot check in, go to the registration desk in front of the TV near the canteen.',
+    e_kod: 'The code is wrong or has expired. Scan the QR code on the TV again or type the current code.',
+    e_liste: 'This number is not on the exam list. Check your number or go to the registration desk.', e_gunyok: 'There is no speaking exam today.',
+    yanlisGun: (g, t, s) => `Your exam is on: ${g}${t ? ' (' + t + ')' : ''}, at ${s}. You do not have an exam today.`,
+    grup: 'group', bekle_b: 'Waiting for a partner', bekle_m: s => `Your group time: ${s}. When your partner checks in, your jury and classroom will appear here.`,
+    erken: "I'm ready to go in early", erkenKaldir: 'Cancel "ready to go in early"', erkenNot: 'If you are ready early, you will be called when a place opens in the earlier group.',
+    trans_b: 'No partner could be matched', trans_m: s => `You will take the exam in the next slot (${s}). Please keep waiting; your jury will appear here once your partner is set.`,
+    juri: (lv, n, r) => `${lv} · Jury ${n} · Room ${r}`, saat: 'Time', es: 'Your partner', tek: 'You will go in alone',
+    atandi_m: 'Wait in front of the classroom; the jury will call you.', gecikme: 'Your jury will be a few minutes late; please wait at the door.',
+    sinavda_b: 'You are in the exam', juriHocalari: 'Jury teachers',
+    gec_b: 'You are late for the exam', gec_m: s => `If a jury becomes free before ${s} today, you may still be called. Keep following this screen on your phone. If no jury becomes free, you cannot take the exam today.`,
+    alinamadi_b: 'No jury was free today, so you could not take the exam', red_b: 'You are too late; you cannot take the exam today',
+    gelmedi_b: 'The jury marked you as "absent"', gelmedi_m: 'If this is a mistake, go to the registration desk immediately.',
+    bitti_b: 'Your exam is complete', bitti_bekle: 'Your score will appear here when all exams at your level are finished and the administration publishes the scores.',
+    not_b: 'Your speaking score', anasis: 'The official result will be announced on AnaSİS. Please check your score on AnaSİS.',
+    yenilenir: 'This screen refreshes automatically; do not close it.', baskaOgr: 'Another student on this phone',
+    sorunBtn: 'I have a problem / I need help', sorunBaslik: 'Choose your problem', aciklama: 'Short description (optional)', aciklamaZ: 'Short description (required)',
+    yazDil: 'You can write in Turkish, English or Russian.', gonder: 'Send', vazgec: 'Cancel',
+    gonderildi: 'Your message has been sent to the administration. The reply will appear on this screen.', acilNot: 'Go to the registration desk immediately.',
+    mesajlar: 'Your messages', d_acik: 'Waiting for reply', d_cevap: 'Answered', d_cozuldu: 'Resolved', yonetim: 'Administration',
+    e_sinir: 'You have 3 messages waiting for a reply. You can send a new one when you get a reply.', e_numara: 'First enter your student number.',
+    e_aciklama: 'Please write a short description.', e_sec: 'Please choose an option.', e_sinavda: 'You are in the exam; reporting is closed.', e_yogun: 'There are too many reports right now. Go to the registration desk.',
+    sorun: { kod: 'I entered the code but it is not accepted', numara: 'My student number is not on the list', gun: 'The screen shows the wrong day or level',
+      bekleme: 'I have been waiting for a long time and have not received jury information', derslik: 'I cannot find the classroom', es: 'My partner has not come or I cannot find my partner',
+      acil: 'Emergency / health problem', diger: 'Other' },
+    anketBaslik: 'End-of-exam survey',
+    anketUst1: 'After completing the survey you can see your speaking exam score. Your answers will not affect your speaking exam score.',
+    anketUst2: 'Your answers are reported only as a summary. For anything you write, you choose whether your name is shared with the school administration.',
+    olcek: ['Agree', 'Partly agree', 'Disagree'], evet: 'Yes', hayir: 'No',
+    madde: ['The instructions on exam day (QR code, phone screen, TV) were clear.', 'My waiting time was reasonable.', 'The jury and the exam setting were well organised and suitable for the exam.',
+      'During the exam, the teachers were helpful and friendly.', "During the exam, the teachers' attitude affected my motivation negatively.",
+      'The exam questions/tasks matched what we studied in class.', 'Having my speaking recorded on camera made me stressed.',
+      'Having my speaking recorded on camera did not affect me negatively.'],
+    a_sorun: 'I had some problems.', a_sorunAcikla: 'Please explain briefly', a_diger: 'Other comments and suggestions', istege: 'optional',
+    isimSor: 'Shall we share your name with the school administration about this?', anketGonder: 'Submit the survey and show my score',
+    e_anket: 'Please answer all items.', e_izin: 'Please also answer the name question.', e_sorunMetin: 'Please briefly describe the problem you had.'
+  },
+  ru: {
+    ad: 'Русский', eyebrow: 'Университет Анадолу · Подготовительная программа', baslik: 'Экзамен по говорению', dilSec: 'Выберите язык',
+    girisBaslik: 'Регистрация на экзамен по говорению', no: 'Номер студента', kod: '4-значный код на экране телевизора', giris: 'Войти', bekleyin: 'Подождите…',
+    telefonYok: 'Если у вас нет телефона или не получается войти, подойдите к столу регистрации перед телевизором у столовой.',
+    e_kod: 'Код неверный или устарел. Снова отсканируйте QR-код на телевизоре или введите текущий код.',
+    e_liste: 'Этого номера нет в списке экзамена. Проверьте номер или подойдите к столу регистрации.', e_gunyok: 'Сегодня экзамена по говорению нет.',
+    yanlisGun: (g, t, s) => `Ваш экзамен: ${g}${t ? ' (' + t + ')' : ''}, в ${s}. Сегодня у вас нет экзамена.`,
+    grup: 'группа', bekle_b: 'Ожидание партнёра', bekle_m: s => `Время вашей группы: ${s}. Когда ваш партнёр зарегистрируется, здесь появятся ваша комиссия и аудитория.`,
+    erken: 'Я готов(а) войти раньше', erkenKaldir: 'Отменить «готов(а) войти раньше»', erkenNot: 'Если вы готовы раньше, вас вызовут, когда в предыдущей группе освободится место.',
+    trans_b: 'Не удалось подобрать партнёра', trans_m: s => `Вы будете сдавать экзамен в следующем слоте (${s}). Пожалуйста, ждите; когда партнёр будет определён, здесь появится ваша комиссия.`,
+    juri: (lv, n, r) => `${lv} · Комиссия ${n} · Аудитория ${r}`, saat: 'Время', es: 'Ваш партнёр', tek: 'Вы будете сдавать один (одна)',
+    atandi_m: 'Ждите у аудитории; комиссия вас вызовет.', gecikme: 'Ваша комиссия задержится на несколько минут; подождите у двери.',
+    sinavda_b: 'Вы на экзамене', juriHocalari: 'Преподаватели комиссии',
+    gec_b: 'Вы опоздали на экзамен', gec_m: s => `Если сегодня до ${s} освободится комиссия, вас могут вызвать. Следите за этим экраном на телефоне. Если комиссия не освободится, сегодня вы не сможете сдать экзамен.`,
+    alinamadi_b: 'Сегодня не было свободной комиссии, поэтому вы не смогли сдать экзамен', red_b: 'Вы опоздали; сегодня вы не можете сдать экзамен',
+    gelmedi_b: 'Комиссия отметила вас как «не явился(-ась)»', gelmedi_m: 'Если это ошибка, немедленно подойдите к столу регистрации.',
+    bitti_b: 'Ваш экзамен завершён', bitti_bekle: 'Ваша оценка появится здесь, когда все экзамены вашего уровня закончатся и администрация опубликует результаты.',
+    not_b: 'Ваша оценка за говорение', anasis: 'Официальный результат будет объявлен в системе AnaSİS. Проверьте свою оценку в AnaSİS.',
+    yenilenir: 'Этот экран обновляется автоматически; не закрывайте его.', baskaOgr: 'Другой студент на этом телефоне',
+    sorunBtn: 'У меня проблема / Мне нужна помощь', sorunBaslik: 'Выберите проблему', aciklama: 'Краткое описание (необязательно)', aciklamaZ: 'Краткое описание (обязательно)',
+    yazDil: 'Можно писать на турецком, английском или русском языке.', gonder: 'Отправить', vazgec: 'Отмена',
+    gonderildi: 'Ваше сообщение отправлено администрации. Ответ появится на этом экране.', acilNot: 'Немедленно подойдите к столу регистрации.',
+    mesajlar: 'Ваши сообщения', d_acik: 'Ожидает ответа', d_cevap: 'Получен ответ', d_cozuldu: 'Решено', yonetim: 'Администрация',
+    e_sinir: 'У вас 3 сообщения без ответа. Новое сообщение можно отправить после получения ответа.', e_numara: 'Сначала введите номер студента.',
+    e_aciklama: 'Пожалуйста, напишите краткое описание.', e_sec: 'Пожалуйста, выберите вариант.', e_sinavda: 'Вы на экзамене; отправка сообщений закрыта.', e_yogun: 'Сейчас слишком много сообщений. Подойдите к столу регистрации.',
+    sorun: { kod: 'Я ввёл(а) код, но он не принимается', numara: 'Моего номера нет в списке', gun: 'На экране указан неверный день или уровень',
+      bekleme: 'Я долго жду, а информации о комиссии нет', derslik: 'Я не могу найти аудиторию', es: 'Мой партнёр не пришёл или я не могу его найти',
+      acil: 'Срочная ситуация / проблема со здоровьем', diger: 'Другое' },
+    anketBaslik: 'Анкета после экзамена',
+    anketUst1: 'После заполнения анкеты вы сможете увидеть свою оценку за экзамен по говорению. Ваши ответы не повлияют на эту оценку.',
+    anketUst2: 'Ваши ответы попадают только в сводный отчёт. Для письменных комментариев вы сами решаете, сообщать ли ваше имя администрации школы.',
+    olcek: ['Согласен(на)', 'Частично согласен(на)', 'Не согласен(на)'], evet: 'Да', hayir: 'Нет',
+    madde: ['Инструкции в день экзамена (QR-код, экран телефона, телевизор) были понятными.', 'Время ожидания было разумным.',
+      'Работа комиссии и условия экзамена были хорошо организованы и подходили для экзамена.', 'Во время экзамена преподаватели были доброжелательными и готовыми помочь.',
+      'Во время экзамена поведение преподавателей негативно повлияло на мою мотивацию.', 'Экзаменационные вопросы/задания соответствовали тому, что мы изучали на занятиях.',
+      'Видеозапись моих ответов вызвала у меня стресс.', 'Видеозапись моих ответов не повлияла на меня негативно.'],
+    a_sorun: 'У меня возникли некоторые проблемы.', a_sorunAcikla: 'Кратко опишите', a_diger: 'Другие мнения и предложения', istege: 'необязательно',
+    isimSor: 'Сообщить ли ваше имя администрации школы по этому вопросу?', anketGonder: 'Отправить анкету и показать оценку',
+    e_anket: 'Пожалуйста, ответьте на все пункты.', e_izin: 'Ответьте также на вопрос об имени.', e_sorunMetin: 'Кратко опишите возникшую проблему.'
+  }
+};
+const SORUN_SIRA = ['kod', 'numara', 'gun', 'bekleme', 'derslik', 'es', 'acil', 'diger'];
+</script>
+
+<script>
 const KOD = $('#app').dataset.c || '';
 let oturum = null, sonG = null, mesaj = '', yanlis = '', timer = null;
+let dil = store.get('dil'), dilEkrani = !dil;            // ilk açılışta dil seçimi
+let sorunAcik = false, sorunMesaj = '', sorunTamam = null, mesajlar = [], anket = { l: [] }, anketMesaj = '';
 try { oturum = JSON.parse(store.get('ogr') || 'null'); } catch (e) { oturum = null; }
+let mKey = []; try { mKey = JSON.parse(store.get('ogrmsj') || '[]'); } catch (e) { mKey = []; }
+const L = () => DIL[dil] || DIL.tr;
 
+function ust() { const t = L(); $('#eyebrow').textContent = t.eyebrow; $('#baslik').textContent = t.baslik; document.documentElement.lang = dil || 'tr'; document.title = t.baslik; }
+function vDil() {
+  return `<div class="phone stack"><div class="big">Dil seçin · Choose language · Выберите язык</div><div class="dil">
+    ${['tr', 'en', 'ru'].map(d => `<button class="btn big" data-act="dil" data-v="${d}">${DIL[d].ad}</button>`).join('')}</div></div>`;
+}
+function dilLink() { return `<button class="btn sm ghost" data-act="dilEkrani">Dil · Language · Язык</button>`; }
+
+/* ---------- sorun bildirme ---------- */
+function vSorunBtn() { return `<button class="btn bad ghost" data-act="sorunAc">${esc(L().sorunBtn)}</button>`; }
+function vSorun(girissiz) {
+  const t = L();
+  if (sorunTamam) return `<div class="panel stack"><div class="note ${sorunTamam.acil ? 'n-bad' : 'n-ok'}">${esc(t.gonderildi)}${sorunTamam.acil ? `<br><b>${esc(t.acilNot)}</b>` : ''}</div><div><button class="btn sm ghost" data-act="sorunKapat">OK</button></div></div>`;
+  return `<form class="panel stack" data-f="sorun"><div class="big">${esc(t.sorunBaslik)}</div>
+    ${girissiz ? `<label class="f">${esc(t.no)}<input id="sno" inputmode="numeric" autocomplete="off" value="${esc(($('#no') || {}).value || '')}"></label>` : ''}
+    <div class="secim">${SORUN_SIRA.map(k => `<label class="ck"><input type="radio" name="skat" value="${k}"> ${esc(t.sorun[k])}</label>`).join('')}</div>
+    <label class="f" id="saciklama">${esc(t.aciklama)}<textarea id="smetin" rows="3" maxlength="600"></textarea></label><p class="small muted">${esc(t.yazDil)}</p>
+    ${sorunMesaj ? `<div class="note n-bad">${esc(sorunMesaj)}</div>` : ''}
+    <div class="row"><button class="btn" type="submit">${esc(t.gonder)}</button><button class="btn ghost" type="button" data-act="sorunKapat">${esc(t.vazgec)}</button></div></form>`;
+}
+function vMesajlar() {
+  if (!mesajlar.length) return '';
+  const t = L(), dd = { acik: t.d_acik, cevap: t.d_cevap, cozuldu: t.d_cozuldu };
+  return `<div class="panel stack"><h3 style="margin:0">${esc(t.mesajlar)}</h3>${mesajlar.map(m => `<div class="msg ${m.acil ? 'acil' : ''}">
+    <div class="small muted">${esc(m.saat)} · ${esc(t.sorun[m.kat] || m.katAd)} · <b>${esc(dd[m.durum] || m.durum)}</b></div>${m.metin ? `<div>${esc(m.metin)}</div>` : ''}
+    ${m.cev.map(c => `<div class="cv"><div class="small muted">${esc(t.yonetim)} · ${esc(c.saat)}</div><div>${esc(c.ceviri || c.metin)}</div>${c.ceviri ? `<div class="small muted">${esc(c.metin)}</div>` : ''}</div>`).join('')}</div>`).join('')}</div>`;
+}
+function vSorunAlani(girissiz, acik) {
+  if (sorunAcik) return vSorun(girissiz);
+  return (acik ? `<div>${vSorunBtn()}</div>` : '') + vMesajlar();
+}
+
+/* ---------- giriş ---------- */
 function form() {
-  return `<form class="phone stack" id="f"><div class="big">Speaking sınavına giriş</div>
-    <label class="f">Öğrenci numarası<input id="no" inputmode="numeric" autocomplete="off" required></label>
-    <label class="f">TV'deki 4 haneli kod<input id="kod" inputmode="numeric" autocomplete="off" maxlength="4" value="${esc(KOD)}" required></label>
+  const t = L();
+  return `<form class="phone stack" id="f" data-f="giris"><div class="big">${esc(t.girisBaslik)}</div>
+    <label class="f">${esc(t.no)}<input id="no" inputmode="numeric" autocomplete="off" required></label>
+    <label class="f">${esc(t.kod)}<input id="kod" inputmode="numeric" autocomplete="off" maxlength="4" value="${esc(KOD)}" required></label>
     ${mesaj ? `<div class="note n-bad">${esc(mesaj)}</div>` : ''}${yanlis ? `<div class="note n-warn">${esc(yanlis)}</div>` : ''}
-    <button class="btn big" type="submit">Giriş yap</button>
-    <p class="small muted">Telefonun yoksa ya da giriş yapamıyorsan kantin tarafındaki TV'nin önündeki kayıt masasına git.</p></form>`;
+    <button class="btn big" type="submit">${esc(t.giris)}</button>
+    <p class="small muted">${esc(t.telefonYok)}</p></form>
+    <div class="stack" style="margin-top:12px">${vSorunAlani(true, true)}<div>${dilLink()}</div></div>`;
 }
+
+/* ---------- durum ---------- */
+function kutu(renk, baslik, ic) { return `<div class="res r-${renk}"><div class="big">${esc(baslik)}</div>${ic || ''}</div>`; }
 function durum(g) {
-  let ek = '';
-  if (g.erkenSon != null) ek = `<button class="btn big ${g.erken ? 'ghost' : ''}" data-act="erken">${g.erken ? '"Erken girmeye hazırım" işaretini kaldır' : 'Erken girmeye hazırım'}</button><p class="small muted">Erken girmeye hazırsan, önceki grupta boş yer olursa çağrılırsın.</p>`;
-  const kv = g.saat ? `<dl class="kv"><dt>Saat</dt><dd>${esc(g.saat)}</dd><dt>Eşin</dt><dd>${esc(g.es)}</dd></dl>` : '';
-  return `<div class="phone stack"><div><div class="small muted">${esc(g.no)}</div><div class="big">${esc(g.ad)}</div><div class="small muted">${esc(g.lv)} · ${esc(g.cls)} · grup ${esc(g.grup)}</div></div>
-    ${g.baslik ? `<div class="res r-${g.renk}"><div class="big">${esc(g.baslik)}</div>${kv}${g.metin ? `<p>${esc(g.metin)}</p>` : ''}</div>` : ''}
-    ${g.gecikme ? '<div class="note n-warn">Jüriniz birkaç dakika gecikecek, kapıda bekleyin.</div>' : ''}${ek}
-    <p class="small muted">Bu ekran kendiliğinden yenilenir; kapatma.</p>
-    <button class="btn sm ghost" data-act="cik">Bu telefonda başka öğrenci</button></div>`;
+  const t = L(); let ana = '', ek = '';
+  const p = x => x ? `<p>${esc(x)}</p>` : '';
+  switch (g.kod) {
+    case 'bekle':
+      ana = kutu('acc', t.bekle_b, p(t.bekle_m(g.saat2)));
+      if (g.erkenSon != null) ek = `<button class="btn big ${g.erken ? 'ghost' : ''}" data-act="erken">${esc(g.erken ? t.erkenKaldir : t.erken)}</button><p class="small muted">${esc(t.erkenNot)}</p>`;
+      break;
+    case 'trans': ana = kutu('warn', t.trans_b, p(t.trans_m(g.saat2))); break;
+    case 'atandi':
+      ana = kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room), `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.tek)}</dd></dl>${p(t.atandi_m)}`);
+      if (g.gecikme) ek = `<div class="note n-warn">${esc(t.gecikme)}</div>`;
+      break;
+    case 'sinavda':
+      ana = kutu('ok', t.sinavda_b, `<p><b>${esc(t.juri(g.j.lv, g.j.no, g.j.room))}</b></p><dl class="kv"><dt>${esc(t.juriHocalari)}</dt><dd>${esc(g.hocalar.join(' – '))}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.tek)}</dd></dl>`);
+      break;
+    case 'gec': ana = kutu('hl', t.gec_b, p(t.gec_m(g.son))); break;
+    case 'alinamadi': ana = kutu('bad', t.alinamadi_b); break;
+    case 'red': ana = kutu('bad', t.red_b); break;
+    case 'gelmedi': ana = kutu('bad', t.gelmedi_b, p(t.gelmedi_m)); break;
+    case 'bitti':
+      if (g.anket) return bas(g) + vAnket() + alt(g);
+      if (!g.yayin) ana = kutu('ok', t.bitti_b, p(t.bitti_bekle));
+      else ana = kutu('ok', t.not_b, `<div style="font-size:44px;font-weight:700;line-height:1.1;margin:6px 0">${esc(g.not.fin)} / ${esc(g.not.max)}</div><div class="big">${esc(g.not.r100)} / 100</div><p>${esc(t.anasis)}</p>`);
+      break;
+    default: ana = g.baslik ? kutu(g.renk || 'acc', g.baslik, p(g.metin)) : '';
+  }
+  return bas(g) + `<div class="phone stack">${ana}${ek}<p class="small muted">${esc(t.yenilenir)}</p></div>` + `<div class="stack" style="margin-top:12px">${vSorunAlani(false, g.sorunAcik)}</div>` + alt(g);
 }
-function render() { $('#app').innerHTML = oturum && sonG ? durum(sonG) : form(); }
+function bas(g) { return `<div class="phone" style="margin-bottom:10px"><div class="small muted">${esc(g.no)}</div><div class="big">${esc(g.ad)}</div><div class="small muted">${esc(g.lv)} · ${esc(g.cls)} · ${esc(L().grup)} ${esc(g.grup)}</div></div>`; }
+function alt() { return `<div class="row" style="margin-top:12px;justify-content:space-between">${dilLink()}<button class="btn sm ghost" data-act="cik">${esc(L().baskaOgr)}</button></div>`; }
+
+/* ---------- anket ---------- */
+function rad(ad, v, etiket, sec) { return `<label class="${sec ? 'sec' : ''}"><input type="radio" name="${ad}" value="${v}" ${sec ? 'checked' : ''}>${esc(etiket)}</label>`; }
+function vIzin(ad, val) { const t = L(); return `<div class="small" style="margin-top:6px">${esc(t.isimSor)}</div><div class="lik">${rad(ad, '1', t.evet, val === true)}${rad(ad, '0', t.hayir, val === false)}</div>`; }
+function vAnket() {
+  const t = L(), a = anket;
+  const maddeler = t.madde.map((m, i) => `<div class="q"><div>${i + 1}. ${esc(m)}</div><div class="lik">${t.olcek.map((o, v) => rad('m' + i, v, o, a.l[i] === v)).join('')}</div></div>`).join('');
+  const sorun = `<div class="q"><div>9. ${esc(t.a_sorun)}</div><div class="lik">${rad('sorun', '1', t.evet, a.sorun === true)}${rad('sorun', '0', t.hayir, a.sorun === false)}</div>
+    ${a.sorun ? `<label class="f" style="margin-top:6px">${esc(t.a_sorunAcikla)}<textarea id="aSorun" rows="3" maxlength="1000">${esc(a.sorunMetin || '')}</textarea></label>${vIzin('sIzin', a.sorunIzin)}` : ''}</div>`;
+  const diger = `<div class="q"><div>10. ${esc(t.a_diger)} <span class="small muted">(${esc(t.istege)})</span></div><textarea id="aDiger" rows="3" maxlength="1000">${esc(a.diger || '')}</textarea>
+    ${(a.diger || '').trim() ? vIzin('dIzin', a.digerIzin) : ''}<p class="small muted">${esc(t.yazDil)}</p></div>`;
+  return `<form class="phone stack" data-f="anket"><div class="big">${esc(t.anketBaslik)}</div><div class="note n-acc">${esc(t.anketUst1)}</div><p class="small muted">${esc(t.anketUst2)}</p>
+    ${maddeler}${sorun}${diger}${anketMesaj ? `<div class="note n-bad">${esc(anketMesaj)}</div>` : ''}<button class="btn big" type="submit">${esc(t.anketGonder)}</button></form>`;
+}
+
+/* ---------- çizim ve sunucu ---------- */
+function render() {
+  ust();
+  if (dilEkrani) { $('#app').innerHTML = vDil(); return; }
+  $('#app').innerHTML = oturum && sonG ? durum(sonG) : form();
+}
+function errMetin(r) { const t = L(); return ({ kod: t.e_kod, liste: t.e_liste, gunyok: t.e_gunyok, sinir: t.e_sinir, numara: t.e_numara, aciklama: t.e_aciklama, sinavda: t.e_sinavda, yogun: t.e_yogun, eksik: t.e_anket })[r.errKod] || r.err; }
+async function mesajYenile() {
+  if (!mKey.length) return;
+  try { const r = await run('apiOgrMesajlar', mKey, dil || 'tr'); mesajlar = (r.m || []).sort((a, b) => b.ts - a.ts); } catch (e) { }
+}
 async function yenile() {
-  if (!oturum) return;
-  try { const r = await run('apiOgrenciDurum', oturum.no, oturum.anahtar); if (r.err) { store.del('ogr'); oturum = null; } else sonG = r.g; $('#hata').hidden = true; } catch (e) { hataGoster(e); }
-  if (!editing()) render();
+  await mesajYenile();
+  if (oturum) {
+    try { const r = await run('apiOgrenciDurum', oturum.no, oturum.anahtar); if (r.err) { store.del('ogr'); oturum = null; } else sonG = r.g; $('#hata').hidden = true; } catch (e) { hataGoster(e); }
+  }
+  if (!editing() && !dilEkrani) render();
 }
 document.addEventListener('submit', async e => {
-  e.preventDefault(); mesaj = ''; yanlis = '';
-  const b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Bekleyin…';
+  e.preventDefault(); const f = e.target.dataset.f, t = L();
+  const b = e.target.querySelector('button[type=submit]'); b.disabled = true; const eski = b.textContent; b.textContent = t.bekleyin;
   try {
-    const r = await run('apiOgrenciGiris', $('#no').value, $('#kod').value);
-    if (r.err) mesaj = r.err; else if (r.wrong) yanlis = r.wrong;
-    else { oturum = { no: r.no, anahtar: r.anahtar }; store.set('ogr', JSON.stringify(oturum)); sonG = r.g; }
+    if (f === 'giris') {
+      mesaj = ''; yanlis = '';
+      const r = await run('apiOgrenciGiris', $('#no').value, $('#kod').value);
+      if (r.err) mesaj = errMetin(r); else if (r.wrong) yanlis = t.yanlisGun(r.wrongGun, r.wrongTarih, r.wrongSaat);
+      else { oturum = { no: r.no, anahtar: r.anahtar }; store.set('ogr', JSON.stringify(oturum)); sonG = r.g; }
+    } else if (f === 'sorun') {
+      sorunMesaj = '';
+      const kat = (e.target.querySelector('input[name=skat]:checked') || {}).value, metin = $('#smetin').value.trim();
+      const no = oturum ? oturum.no : ($('#sno') ? $('#sno').value.replace(/\D/g, '') : '');
+      if (!no) sorunMesaj = t.e_numara; else if (!kat) sorunMesaj = t.e_sec; else if (kat === 'diger' && !metin) sorunMesaj = t.e_aciklama;
+      else {
+        const r = await run('apiOgrSorun', no, oturum ? oturum.anahtar : null, kat, metin, dil || 'tr');
+        if (r.err) sorunMesaj = errMetin(r);
+        else { mKey.push({ id: r.id, k: r.k }); mKey = mKey.slice(-10); store.set('ogrmsj', JSON.stringify(mKey)); sorunTamam = { acil: r.acil }; await mesajYenile(); }
+      }
+    } else if (f === 'anket') {
+      anketOku(); anketMesaj = '';
+      const a = anket;
+      if (a.l.filter(x => x != null).length !== 8 || a.sorun == null) anketMesaj = t.e_anket;
+      else if (a.sorun && !(a.sorunMetin || '').trim()) anketMesaj = t.e_sorunMetin;
+      else if ((a.sorun && a.sorunIzin == null) || ((a.diger || '').trim() && a.digerIzin == null)) anketMesaj = t.e_izin;
+      else {
+        const r = await run('apiOgrAnket', oturum.no, oturum.anahtar, { l: a.l, sorun: a.sorun, sorunMetin: a.sorunMetin || '', sorunIzin: !!a.sorunIzin, diger: a.diger || '', digerIzin: !!a.digerIzin, dil: dil || 'tr' });
+        if (r.err) anketMesaj = errMetin(r); else { sonG = r.g; anket = { l: [] }; }
+      }
+    }
   } catch (err) { hataGoster(err); }
+  b.disabled = false; b.textContent = eski;
   render();
 });
+function anketOku() {
+  const sec = n => { const x = document.querySelector(`input[name="${n}"]:checked`); return x ? Number(x.value) : null; };
+  for (let i = 0; i < 8; i++) { const v = sec('m' + i); if (v != null) anket.l[i] = v; }
+  const s = sec('sorun'); if (s != null) anket.sorun = s === 1;
+  if ($('#aSorun')) anket.sorunMetin = $('#aSorun').value;
+  if ($('#aDiger')) anket.diger = $('#aDiger').value;
+  const si = sec('sIzin'); if (si != null) anket.sorunIzin = si === 1;
+  const di = sec('dIzin'); if (di != null) anket.digerIzin = di === 1;
+}
+document.addEventListener('change', e => {
+  if (e.target.closest('form[data-f=anket]')) { anketOku(); if (e.target.tagName === 'TEXTAREA') return; render(); return; }   // yazı kutusundan çıkınca yeniden çizme: aynı anda yapılan dokunuş kaybolmasın
+  if (e.target.name === 'skat') { const z = e.target.value === 'diger'; const l = $('#saciklama'); if (l) l.firstChild.textContent = z ? L().aciklamaZ : L().aciklama; }
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'aDiger') { const vardi = !!(anket.diger || '').trim(); anket.diger = e.target.value; if (vardi !== !!anket.diger.trim()) { anketOku(); render(); const el = $('#aDiger'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
+});
 document.addEventListener('click', async e => {
-  const b = e.target.closest('[data-act]'); if (!b) return;
-  if (b.dataset.act === 'cik') { store.del('ogr'); oturum = null; sonG = null; render(); return; }
-  if (b.dataset.act === 'erken') { b.disabled = true; try { const r = await run('apiErken', oturum.no, oturum.anahtar); if (r.g) sonG = r.g; } catch (err) { hataGoster(err); } render(); }
+  const b = e.target.closest('[data-act]'); if (!b) return; const a = b.dataset.act;
+  if (a === 'dil') { dil = b.dataset.v; store.set('dil', dil); dilEkrani = false; return render(); }
+  if (a === 'dilEkrani') { dilEkrani = true; return render(); }
+  if (a === 'sorunAc') { sorunAcik = true; sorunTamam = null; sorunMesaj = ''; return render(); }
+  if (a === 'sorunKapat') { sorunAcik = false; sorunTamam = null; sorunMesaj = ''; return render(); }
+  if (a === 'cik') { store.del('ogr'); oturum = null; sonG = null; anket = { l: [] }; return render(); }
+  if (a === 'erken') { b.disabled = true; try { const r = await run('apiErken', oturum.no, oturum.anahtar); if (r.g) sonG = r.g; } catch (err) { hataGoster(err); } render(); }
 });
 render(); yenile(); timer = setInterval(yenile, 12000);
 </script>

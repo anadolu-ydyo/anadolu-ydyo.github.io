@@ -146,13 +146,33 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>body{margin:0}.tvpage .code{font-size:96px}.tvpage .calls b{font-size:22px}.tvpage h2{font-size:28px}</style>
+<style>
+/* 30.10.2026: dil seçimi, sorun bildirme, anket, mesajlar */
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
+textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
+.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.q{padding:10px 0;border-top:1px solid var(--line)}
+.lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
+.lik label input{position:absolute;opacity:0;pointer-events:none}
+.lik label.sec{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.msg{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);display:grid;gap:4px}
+.msg.acil{border:2px solid var(--bad);background:var(--bad-soft)}
+.msg .cv{margin-top:4px;padding:8px;border-radius:6px;background:var(--accent-soft)}
+.msg.kapali{opacity:.65}
+.tvpage .en{font-size:15px;opacity:.8;margin-top:-6px}
+.ozet td,.ozet th{font-size:13px;white-space:nowrap}.ozet td.m{white-space:normal;min-width:260px}
+.bar3{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:90px;background:var(--line)}.bar3 i{display:block}
+.bar3 .a{background:var(--ok)}.bar3 .b{background:var(--warn)}.bar3 .c{background:var(--bad)}
+</style>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script></head>
 <body class="tvpage">
 <div class="wrap" lang="tr" style="max-width:1600px;padding-top:20px">
   <div class="note n-bad" id="hata" hidden></div>
   <main id="app" class="tv">
-    <div class="panel qrbox"><h2>İngilizce Speaking Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p>
+    <div class="panel qrbox"><h2>İngilizce Speaking Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p><p class="muted en" lang="en">Scan the QR code and enter your student number. If it does not open, use the code below.</p>
       <div id="qr"></div><div class="code" id="kod">----</div><div class="bar"><i id="bar" style="width:100%"></i></div>
       <p class="small muted">Kod 30 saniyede bir değişir. Telefonu olmayan öğrenciler: kayıt masası (bu TV'nin önü).</p></div>
     <div class="stack"><div class="note n-acc" id="simdi">—</div><div class="panel"><h3>Jüriye gönderilenler</h3><ul class="calls" id="liste"></ul></div></div>

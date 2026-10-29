@@ -146,6 +146,26 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>body{margin:0}.tvpage .code{font-size:96px}.tvpage .calls b{font-size:22px}.tvpage h2{font-size:28px}</style>
+<style>
+/* 30.10.2026: dil seçimi, sorun bildirme, anket, mesajlar */
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
+textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
+.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.q{padding:10px 0;border-top:1px solid var(--line)}
+.lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
+.lik label input{position:absolute;opacity:0;pointer-events:none}
+.lik label.sec{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.msg{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);display:grid;gap:4px}
+.msg.acil{border:2px solid var(--bad);background:var(--bad-soft)}
+.msg .cv{margin-top:4px;padding:8px;border-radius:6px;background:var(--accent-soft)}
+.msg.kapali{opacity:.65}
+.tvpage .en{font-size:15px;opacity:.8;margin-top:-6px}
+.ozet td,.ozet th{font-size:13px;white-space:nowrap}.ozet td.m{white-space:normal;min-width:260px}
+.bar3{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:90px;background:var(--line)}.bar3 i{display:block}
+.bar3 .a{background:var(--ok)}.bar3 .b{background:var(--warn)}.bar3 .c{background:var(--bad)}
+</style>
 </head>
 <body>
 <div class="wrap" lang="tr">
@@ -214,7 +234,9 @@ function notBlok(v, g, no, butonAd) {
 
 <script>
 const URL0 = $('#app').dataset.url;
-let ot = store.sget('yon'), V = null, tab = 'canli', mesaj = '', gmesaj = '', dsv = '', tik = 0;
+let ot = store.sget('yon'), V = null, tab = 'canli', mesaj = '', gmesaj = '', dsv = '', tik = 0, sonAcik = null, bekleyenCizim = false;
+function acikSay() { return V && V.msj ? V.msj.filter(m => m.durum === 'acik').length : 0; }
+function bip(acil) { try { const c = new (window.AudioContext || window.webkitAudioContext)(); [0, 0.25, acil ? 0.5 : null].filter(x => x != null).forEach(t0 => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = acil ? 880 : 660; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.2, c.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + t0 + 0.2); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + 0.22); }); } catch (e) { } }
 document.addEventListener('input', e => { if (e.target.id === 'dsaat') dsv = e.target.value; });
 function vGiris() { return `<form class="panel login stack"><h2>Yönetim girişi</h2><label class="f">Yönetim şifresi<input id="pw" type="password" required></label>${gmesaj ? `<div class="note n-bad">${esc(gmesaj)}</div>` : ''}<button class="btn" type="submit">Giriş</button></form>`; }
 function vCanli() {
@@ -232,6 +254,43 @@ function vCanli() {
     <div class="panel lists">${L('Eş bekleyen', V.bekleyen)}${L('Aktarılan', V.aktarilan)}${L('Geç kalan – bekliyor (en az geç kalan üstte)', V.gec)}${L('Geç kaldı – sınava alınamadı', V.alinamadi)}</div>
     ${V.uyarilar.length ? `<div class="panel"><h3>Not uyarıları</h3><ul>${V.uyarilar.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}</div>`;
 }
+function vUyari() {
+  if (!V) return '';
+  const acil = (V.msj || []).filter(m => m.durum === 'acik' && m.acil), acik = acikSay(), hazir = (V.duzeyler || []).filter(d => d.hazir && !d.yayinda);
+  return (acil.length ? `<div class="note n-bad" style="margin-bottom:10px"><b>ACİL:</b> ${acil.map(m => esc(m.ad + ' – ' + m.katAd)).join(' · ')} <button class="btn sm bad" data-act="tab" data-v="mesaj">Mesajlara git</button></div>` : '')
+    + (acik && tab !== 'mesaj' ? `<div class="note n-hl" style="margin-bottom:10px">${acik} cevap bekleyen mesaj var. <button class="btn sm" data-act="tab" data-v="mesaj">Mesajlar</button></div>` : '')
+    + (hazir.length && tab !== 'yayin' ? `<div class="note n-ok" style="margin-bottom:10px">${hazir.map(d => esc(d.ad) + ' tamamlandı, yayıma hazır').join(' · ')}. <button class="btn sm" data-act="tab" data-v="yayin">Not yayımı</button></div>` : '');
+}
+function vMesaj() {
+  const L = V.msj || [], dd = { acik: ['p-warn', 'Cevap bekliyor'], cevap: ['p-acc', 'Cevaplandı'], cozuldu: ['p-ok', 'Çözüldü'] };
+  if (!L.length) return '<div class="panel muted">Henüz mesaj yok.</div>';
+  return `<div class="stack">${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}${L.map(m => `<div class="msg ${m.acil ? 'acil' : ''} ${m.durum === 'cozuldu' ? 'kapali' : ''}">
+    <div class="row" style="justify-content:space-between"><div><b>${m.kim === 'o' ? 'Öğrenci' : 'Hoca'}: ${esc(m.ad)}</b> ${m.no && !m.ad.includes(m.no) ? `<span class="mono small">${esc(m.no)}</span>` : ''} <span class="small muted">${esc(m.yer || '')}</span></div>
+      <div><span class="small muted">${esc(m.saat)}</span> <span class="pill ${dd[m.durum][0]}">${dd[m.durum][1]}</span>${m.dil && m.dil !== 'tr' ? ` <span class="pill p-mut">${m.dil.toUpperCase()}</span>` : ''}</div></div>
+    <div><b>${esc(m.katAd)}</b></div>${m.metin ? `<div>${esc(m.metin)}</div>` : ''}${m.ceviri ? `<div class="small"><i>Türkçe çeviri:</i> ${esc(m.ceviri)}</div>` : ''}
+    ${m.cev.map(c => `<div class="cv"><div class="small muted">Yönetim · ${esc(c.saat)}</div><div>${esc(c.metin)}</div>${c.ceviri ? `<div class="small muted">Öğrenciye giden çeviri: ${esc(c.ceviri)}</div>` : ''}</div>`).join('')}
+    ${m.durum !== 'cozuldu' ? `<div class="row" style="align-items:flex-end"><textarea id="cv-${m.id}" rows="2" placeholder="Cevabınız${m.dil && m.dil !== 'tr' ? ' (Türkçe yazın; öğrencinin diline çevrilir)' : ''}" style="flex:1 1 260px"></textarea>
+      <button class="btn sm" data-act="cevap" data-id="${m.id}">Cevap gönder</button><button class="btn sm ghost" data-act="cozuldu" data-id="${m.id}">Çözüldü</button></div>` : ''}</div>`).join('')}</div>`;
+}
+function vYayin() {
+  const D = V.duzeyler || [];
+  return `<div class="panel stack"><h3 style="margin:0">Speaking notlarının öğrencilere yayımlanması</h3>
+    <p class="small muted">Düzeydeki bütün sınavlar bitip notlar kesinleşince "yayıma hazır" olur. Yayımlanan notları öğrenciler, anketi doldurduktan sonra telefonlarında görür. Ekranda "Kesin sonuç AnaSİS'te duyurulacaktır" notu yer alır. Writing notları yalnızca AnaSİS'ten duyurulur.</p>
+    ${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}
+    <div class="scroll"><table><thead><tr><th>Gün · düzey</th><th>Öğrenci</th><th>Sınavı biten</th><th>Not kesinleşen</th><th>Süren</th><th>Okutmayan</th><th>Durum</th><th></th></tr></thead><tbody>
+    ${D.map(d => `<tr><td><b>${esc(d.ad)}</b></td><td>${d.toplam}</td><td>${d.bitti}</td><td>${d.kesin}</td><td>${d.aktif}</td><td>${d.okutmayan}</td>
+      <td>${d.yayinda ? '<span class="pill p-ok">Yayımlandı</span>' : d.hazir ? '<span class="pill p-acc">Yayıma hazır</span>' : '<span class="pill p-mut">Devam ediyor</span>'}</td>
+      <td>${d.yayinda ? '' : d.hazir ? `<button class="btn sm" data-act="yayinla" data-key="${esc(d.key)}">${esc(d.lv)} düzeyi notlarını yayımla</button>` : `<button class="btn sm ghost" data-act="yayinla" data-key="${esc(d.key)}" data-zorla="1">Yine de yayımla</button>`}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">Düzey yok.</td></tr>'}
+    </tbody></table></div></div>`;
+}
+function vAnket() {
+  const A = V.anket || {};
+  const blok = tur => { const a = A[tur]; if (!a || !a.gruplar.length) return `<div class="panel"><h3>${esc(a ? a.ad : tur)} anketi</h3><p class="muted">Henüz cevap yok.</p></div>`;
+    return `<div class="panel"><h3>${esc(a.ad)} anketi</h3><div class="scroll"><table class="ozet"><thead><tr><th>Madde</th>${a.gruplar.map(g => `<th>${esc(g.ad)}<br><span class="muted">n=${g.n}</span></th>`).join('')}</tr></thead><tbody>
+      ${a.madde.map((m, i) => `<tr><td class="m">${i + 1}. ${esc(m)}</td>${a.gruplar.map(g => { const y = g.yuzde[i]; return `<td><div class="bar3"><i class="a" style="width:${y[0]}%"></i><i class="b" style="width:${y[1]}%"></i><i class="c" style="width:${y[2]}%"></i></div><span class="small">%${y[0]} · %${y[1]} · %${y[2]}</span></td>`; }).join('')}</tr>`).join('')}
+      <tr><td class="m">${esc(a.sorunAd)} (Evet)</td>${a.gruplar.map(g => `<td>${g.sorun} kişi</td>`).join('')}</tr></tbody></table></div></div>`; };
+  return `<div class="stack"><p class="small muted">Yüzdeler: katılıyorum · kısmen katılıyorum · katılmıyorum. Yazılı görüşler tablo dosyasındaki "Anket Yazıları" sayfasındadır; isim yalnızca kişi izin verdiyse yazılır. Excel'e aktarmak için menü: Sınav Sistemi › Anket raporu.</p>${blok('O')}${blok('S')}${blok('W')}</div>`;
+}
 function vHocalar() {
   const ilk = V.hocalar.filter(h => h.ilk).length;
   return `<div class="panel"><h3>Hocalar ve şifreler · ilk giriş yapan ${ilk} / ${V.hocalar.length}</h3><p class="small muted">Şifreler tuzlu özet olarak saklanır; kimse göremez. Geçici şifre, hoca ilk girişini yapana kadar görünür.</p>
@@ -245,14 +304,23 @@ function vWriting() {
 function render() {
   if (!V) { $('#ust').hidden = true; $('#app').innerHTML = vGiris(); return; }
   $('#ust').hidden = false;
-  const T = [['canli', 'Canlı durum'], ['hocalar', 'Hocalar ve şifreler'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['kayit', 'Kayıt']];
-  let b = tab === 'canli' ? vCanli() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
+  const ac = acikSay();
+  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['kayit', 'Kayıt']];
+  let b = tab === 'canli' ? vCanli() : tab === 'mesaj' ? vMesaj() : tab === 'yayin' ? vYayin() : tab === 'anket' ? vAnket() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
     : tab === 'sonuc' ? `<div class="panel stack"><p>Sınıf not listeleri tablo dosyasındaki "Speaking Sonuçları" ve "Writing Sonuçları" sayfalarına yazılır; oradan Excel olarak indirilir. Önce MehDer'in bilgisayarına kaydedilir, onaydan sonra AnaSİS hocalarına gönderilir.</p><div><button class="btn" data-act="sonuc">Sonuç sayfalarını şimdi yaz</button></div>${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}</div>`
     : `<div class="panel log">${V.kayit.map(x => `<div>${esc(x)}</div>`).join('')}</div>`;
-  $('#app').innerHTML = `<div class="tabs">${T.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>` + b;
+  $('#app').innerHTML = `<div class="tabs">${T.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>` + vUyari() + b;
 }
-async function yukle() { if (!ot) { V = null; return render(); } try { const r = await run('apiYonetim', ot); if (r.err) { ot = null; store.sdel('yon'); V = null; } else V = r; render(); } catch (e) { hataGoster(e); } }
-document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''; try { const r = await run('apiYonetimGiris', $('#pw').value); if (r.err) gmesaj = r.err; else { ot = r.oturum; store.sset('yon', ot); } } catch (err) { hataGoster(err); } yukle(); });
+async function yukle(zorla) {
+  if (!ot) { V = null; return render(); }
+  try {
+    const r = await run('apiYonetim', ot); if (r.err) { ot = null; store.sdel('yon'); V = null; } else V = r;
+    const ac = acikSay(); if (sonAcik != null && ac > sonAcik) bip((V.msj || []).some(m => m.durum === 'acik' && m.acil)); sonAcik = ac;
+    if (!zorla && editing()) { bekleyenCizim = true; return; } render();
+  } catch (e) { hataGoster(e); }
+}
+document.addEventListener('focusout', () => setTimeout(() => { if (bekleyenCizim && !editing()) { bekleyenCizim = false; render(); } }, 0));
+document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''; try { const r = await run('apiYonetimGiris', $('#pw').value); if (r.err) gmesaj = r.err; else { ot = r.oturum; store.sset('yon', ot); } } catch (err) { hataGoster(err); } yukle(true); });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return; const d = b.dataset;
   if (d.act === 'tab') { tab = d.v; mesaj = ''; return render(); }
@@ -265,10 +333,14 @@ document.addEventListener('click', async e => {
     if (d.act === 'gun') { const r = await run('apiYonetimIslem', ot, 'gun', { gun: Number(d.v) }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
     if (d.act === 'yerine') { const r = await run('apiYonetimIslem', ot, 'yerine', { id: d.id }); if (r.hocaOturum) { window.open(`${URL0}?v=hoca&k=${encodeURIComponent(r.token)}&o=${encodeURIComponent(r.hocaOturum)}`, '_blank'); } }
     if (d.act === 'sonuc') { const r = await run('apiYonetimIslem', ot, 'sonuc', {}); mesaj = r.mesaj || ''; }
+    if (d.act === 'cevap') { const el = document.getElementById('cv-' + d.id), m = el ? el.value.trim() : ''; if (m) { const r = await run('apiYonetimIslem', ot, 'cevap', { id: d.id, metin: m }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
+    if (d.act === 'cozuldu') { const r = await run('apiYonetimIslem', ot, 'cozuldu', { id: d.id }); if (r.v) V = r.v; mesaj = ''; }
+    if (d.act === 'yayinla') { if (!d.zorla || confirm('Düzey henüz "hazır" değil (süren sınav ya da kesinleşmemiş not olabilir). Yine de yayımlansın mı?')) { const r = await run('apiYonetimIslem', ot, 'yayinla', { key: d.key, zorla: !!d.zorla }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
+    sonAcik = acikSay();
   } catch (err) { hataGoster(err); }
   render();
 });
-setInterval(() => { tik++; if (V && (tab === 'canli' || tab === 'kayit') && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);
+setInterval(() => { tik++; if (V && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);
 yukle();
 </script>
 </body></html>
