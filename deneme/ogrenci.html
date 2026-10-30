@@ -201,6 +201,11 @@ const store = {
 };
 const fmt = v => String(v).replace('.', ',');
 function editing() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $('#app').contains(a); }
+/* Dokunuş/tıklama sürerken ekran yeniden çizilmez: yazı kutusundan düğmeye basınca bekleyen yenileme düğmeyi
+   tıklama tamamlanmadan silmesin (30.10.2026 prova hatası). Tuş bırakıldıktan sonra bekleyen çizim yapılır. */
+let basili = false;
+document.addEventListener('pointerdown', () => { basili = true; }, true);
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => setTimeout(() => { basili = false; document.dispatchEvent(new Event('focusout')); }, 60), true));
 function hataGoster(e) { const m = (e && e.message) || String(e); const el = $('#hata'); if (el) { el.textContent = 'Bağlantı hatası: ' + m + ' Sayfayı yenileyin.'; el.hidden = false; } }
 
 /* Taslak notlar: HESAPLA'ya (writing'de "tamamlandı"ya) kadar yalnızca bu tarayıcıda tutulur, sonra tek seferde gönderilir. */
@@ -476,7 +481,7 @@ async function yenile() {
   if (oturum) {
     try { const r = await run('apiOgrenciDurum', oturum.no, oturum.anahtar); if (r.err) { store.del('ogr'); oturum = null; } else sonG = r.g; $('#hata').hidden = true; } catch (e) { hataGoster(e); }
   }
-  if (!editing() && !dilEkrani) render();
+  if (!editing() && !basili && !dilEkrani) render();
 }
 document.addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target.dataset.f, t = L();

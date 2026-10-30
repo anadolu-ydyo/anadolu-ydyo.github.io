@@ -202,6 +202,11 @@ const store = {
 };
 const fmt = v => String(v).replace('.', ',');
 function editing() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && $('#app').contains(a); }
+/* Dokunuş/tıklama sürerken ekran yeniden çizilmez: yazı kutusundan düğmeye basınca bekleyen yenileme düğmeyi
+   tıklama tamamlanmadan silmesin (30.10.2026 prova hatası). Tuş bırakıldıktan sonra bekleyen çizim yapılır. */
+let basili = false;
+document.addEventListener('pointerdown', () => { basili = true; }, true);
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => setTimeout(() => { basili = false; document.dispatchEvent(new Event('focusout')); }, 60), true));
 function hataGoster(e) { const m = (e && e.message) || String(e); const el = $('#hata'); if (el) { el.textContent = 'Bağlantı hatası: ' + m + ' Sayfayı yenileyin.'; el.hidden = false; } }
 
 /* Taslak notlar: HESAPLA'ya (writing'de "tamamlandı"ya) kadar yalnızca bu tarayıcıda tutulur, sonra tek seferde gönderilir. */
@@ -364,7 +369,7 @@ function vWriting() {
     <p class="small muted">Kriterler: Content 5 · Organization 5 · Grammatical Competence 5 · Lexical Competence 5. Özel durumlar: ilgisiz yazı 5, kısa yazı 4, boş kâğıt 1, girmedi G.</p></div><div class="panel stack">${rows}${btn}</div></div>`;
 }
 function render(force) {
-  if (!force && editing()) { bekle = true; return; }
+  if (!force && (editing() || basili)) { bekle = true; return; }
   bekle = false;
   if (!V) { $('#ust').hidden = true; $('#app').innerHTML = vGiris(); return; }
   $('#ust').hidden = false; $('#baslik').textContent = V.ad;
@@ -461,7 +466,7 @@ function gonderilecek(g, no) { const t = TASLAK[g + no]; return t ? { no, c: t.c
 document.addEventListener('input', e => {
   if (e.target.id === 'haDiger') { const vardi = !!(hA.diger || '').trim(); hA.diger = e.target.value; if (vardi !== !!hA.diger.trim()) { const f = e.target.closest('form'); hAnketOku(V.anketler[f.dataset.tur].madde.length); render(true); const el = $('#haDiger'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
 });
-document.addEventListener('focusout', () => setTimeout(() => { if (bekle && !editing()) render(); }, 0));
+document.addEventListener('focusout', () => setTimeout(() => { if (bekle && !basili && !editing()) render(); }, 0));
 let hTik = 0;
 setInterval(async () => {
   hTik++;
