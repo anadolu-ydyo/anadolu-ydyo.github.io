@@ -157,7 +157,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
 textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
-.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.secim{display:grid;gap:6px}.secim .ck{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);justify-content:flex-start;text-align:left;cursor:pointer}
+.ck input[type=radio],.ck input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
+.secim .ck:has(input:checked){border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.note.oto{display:flex;flex-direction:column;gap:4px}
 .q{padding:10px 0;border-top:1px solid var(--line)}
 .lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
@@ -308,7 +311,7 @@ function vMesaj() {
   return `<div class="stack">${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}${L.map(m => `<div class="msg ${m.acil ? 'acil' : ''} ${m.durum === 'cozuldu' ? 'kapali' : ''}">
     <div class="row" style="justify-content:space-between"><div><b>${m.kim === 'o' ? 'Öğrenci' : 'Hoca'}: ${esc(m.ad)}</b> ${m.no && !m.ad.includes(m.no) ? `<span class="mono small">${esc(m.no)}</span>` : ''} <span class="small muted">${esc(m.yer || '')}</span></div>
       <div><span class="small muted">${esc(m.saat)}</span> <span class="pill ${dd[m.durum][0]}">${dd[m.durum][1]}</span>${m.dil && m.dil !== 'tr' ? ` <span class="pill p-mut">${m.dil.toUpperCase()}</span>` : ''}</div></div>
-    <div><b>${esc(m.katAd)}</b></div>${m.metin ? `<div>${esc(m.metin)}</div>` : ''}${m.ceviri ? `<div class="small"><i>Türkçe çeviri:</i> ${esc(m.ceviri)}</div>` : ''}
+    ${m.kim === 'h' && m.kat === 'diger' ? '' : `<div><b>${esc(m.kat === 'acil' && m.kim === 'h' ? 'ACİL' : m.katAd)}</b></div>`}${m.metin ? `<div>${esc(m.metin)}</div>` : ''}${m.ceviri ? `<div class="small"><i>Türkçe çeviri:</i> ${esc(m.ceviri)}</div>` : ''}
     ${m.cev.map(c => `<div class="cv"><div class="small muted">Yönetim · ${esc(c.saat)}</div><div>${esc(c.metin)}</div>${c.ceviri ? `<div class="small muted">Öğrenciye giden çeviri: ${esc(c.ceviri)}</div>` : ''}</div>`).join('')}
     ${m.durum !== 'cozuldu' ? `<div class="row" style="align-items:flex-end"><textarea id="cv-${m.id}" rows="2" placeholder="Cevabınız${m.dil && m.dil !== 'tr' ? ' (Türkçe yazın; öğrencinin diline çevrilir)' : ''}" style="flex:1 1 260px">${esc(cvTaslak[m.id] || '')}</textarea>
       <button class="btn sm" data-act="cevap" data-id="${m.id}">Cevap gönder</button><button class="btn sm ghost" data-act="cozuldu" data-id="${m.id}">Çözüldü</button></div>` : ''}</div>`).join('')}</div>`;

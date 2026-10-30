@@ -157,7 +157,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
 textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
-.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.secim{display:grid;gap:6px}.secim .ck{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);justify-content:flex-start;text-align:left;cursor:pointer}
+.ck input[type=radio],.ck input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
+.secim .ck:has(input:checked){border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.note.oto{display:flex;flex-direction:column;gap:4px}
 .q{padding:10px 0;border-top:1px solid var(--line)}
 .lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
@@ -399,12 +402,91 @@ const DIL = {
   }
 };
 const SORUN_SIRA = ['kod', 'numara', 'gun', 'bekleme', 'derslik', 'es', 'acil', 'diger'];
+/* Otomatik cevaplar (MehDer, 30.10.2026 prova): öğrenci bir sorun seçince sistem, telefondaki güncel duruma
+   bakarak hemen cevap verir. Çözülmezse "yönetime yaz" ile mesaj gönderilir. Acil ve Diğer doğrudan yönetime gider.
+   c = { g: giriş yapıldıysa durum, hata: son giriş hatası (kod/liste/gunyok), yanlis: yanlış gün metni, no } */
+const katAdi = { tr: r => /^Z/i.test(r) ? 'zemin kat' : /^1/.test(r) ? '1. kat' : /^2/.test(r) ? '2. kat' : '',
+  en: r => /^Z/i.test(r) ? 'ground floor' : /^1/.test(r) ? '1st floor' : /^2/.test(r) ? '2nd floor' : '',
+  ru: r => /^Z/i.test(r) ? 'цокольный этаж' : /^1/.test(r) ? '1-й этаж' : /^2/.test(r) ? '2-й этаж' : '' };
+const OTO = {
+  tr: {
+    baslik: 'Sistemin cevabı', anladim: 'Tamam, anladım', yineYaz: 'Sorunum çözülmedi, yönetime yaz',
+    kod: c => c.g ? 'Girişin zaten yapıldı; artık kod gerekmiyor. Bu ekranı açık tut.'
+      : "Kod 30 saniyede bir değişir. TV'deki QR kodunu telefonunla yeniden okut (kod kendiliğinden dolar) ya da TV'de o an görünen 4 haneli kodu yaz. Numaranı da eksiksiz yazdığından emin ol.",
+    numara: c => c.g ? `Numaran listede ve girişin yapıldı: ${c.g.ad} · ${c.g.lv} · ${c.g.cls}.`
+      : c.hata === 'liste' ? `Yazdığın numara${c.no ? ' (' + c.no + ')' : ''} bu sınavın listesinde yok. Numaranı rakam rakam kontrol et. Doğruysa kayıt masasına git; görevli kontrol edecek.`
+      : "Önce numaranı ve TV'deki kodu yazıp giriş yap. Sistem 'listede yok' derse numaranı kontrol et; numaran doğruysa kayıt masasına git.",
+    gun: c => c.g ? `Sistemdeki bilgilerin: ${c.g.lv} düzeyi, ${c.g.cls} sınıfı, grup saatin ${c.g.grup}. Bu bilgiler AnaSİS sınıf listesine göre hazırlandı. Yanlışsa kayıt masasına git.`
+      : c.yanlis ? c.yanlis + ' Bu bilgi AnaSİS sınıf listesine göredir. Yanlış olduğunu düşünüyorsan kayıt masasına git.'
+      : 'Önce numaran ve kodla giriş yap; sınav günün, düzeyin ve saatin ekranda görünür.',
+    bekleme: c => { const g = c.g; if (!g) return "Jüri bilgisi giriş yaptıktan sonra görünür. Önce numaranı ve TV'deki kodu yazıp giriş yap.";
+      switch (g.kod) {
+        case 'bekle': return `Grup saatin ${g.saat2}. Jüriler sırayla doldurulur; jüri bilgin grup saatinde ya da eşin okutunca burada görünür. Grup saatinden önce beklemen normal.` + (g.erkenSon != null ? ' Daha erken girmek istersen "Erken girmeye hazırım" düğmesine bas.' : '');
+        case 'trans': return `Kendi grubunda sana eş bulunamadı, bu yüzden bir sonraki slota (${g.saat2}) aktarıldın. O saatte jüri bilgin burada görünecek. Bu durum notunu etkilemez.`;
+        case 'atandi': return `Jüri bilgin geldi: ${g.j.lv} · Jüri ${g.j.no} · Derslik ${g.j.room}, saat ${g.saat}. Dersliğin önünde bekle; jüri seni çağıracak.` + (g.gecikme ? ' Jürin birkaç dakika gecikiyor.' : '');
+        case 'gec': return `Geç okuttuğun için boş bir jüri bekleniyor. Saat ${g.son}'e kadar boş jüri olursa jüri bilgin burada görünür. Ekranı kapatma.`;
+        default: return 'Ekranındaki duruma göre bugün sınava alınamadın. Kayıt masasına git.'; } },
+    derslik: c => { const g = c.g; if (g && g.j && g.j.room) { const k = katAdi.tr(g.j.room); return `Dersliğin: ${g.j.room}${k ? ' (' + k + ')' : ''}, ${g.j.lv} · Jüri ${g.j.no}. Bulamazsan koridordaki görevliye sor ya da kayıt masasına git.`; }
+      return 'Dersliğin, jüri bilgin gelince bu ekranda görünür. Şimdilik ekranı izle.'; },
+    es: c => { const g = c.g; if (!g) return 'Eşleştirme giriş yaptıktan sonra yapılır. Önce giriş yap.';
+      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Eşin: ${g.esler.join(', ')}. Eşini aramana gerek yok; dersliğin önünde bekle. Eşin gelmezse jüri seni tek başına sınava alır.` : 'Bu sınava tek başına gireceksin; eş beklemene gerek yok.';
+      return 'Eşini aramana gerek yok. Eşin gelmezse sistem seni başka bir öğrenciyle eşleştirir ya da bir sonraki slota aktarır; notun etkilenmez. Ekranı izle.'; }
+  },
+  en: {
+    baslik: 'Automatic answer', anladim: 'OK, I understand', yineYaz: 'My problem is not solved – write to the administration',
+    kod: c => c.g ? 'You are already checked in; you no longer need a code. Keep this screen open.'
+      : 'The code changes every 30 seconds. Scan the QR code on the TV again with your phone (the code fills in automatically) or type the 4-digit code shown on the TV right now. Also make sure your student number is complete.',
+    numara: c => c.g ? `Your number is on the list and you are checked in: ${c.g.ad} · ${c.g.lv} · ${c.g.cls}.`
+      : c.hata === 'liste' ? `The number you entered${c.no ? ' (' + c.no + ')' : ''} is not on the list for this exam. Check it digit by digit. If it is correct, go to the registration desk.`
+      : "First enter your number and the code on the TV and check in. If the system says 'not on the list', check your number; if it is correct, go to the registration desk.",
+    gun: c => c.g ? `Your details in the system: level ${c.g.lv}, class ${c.g.cls}, group time ${c.g.grup}. These come from the AnaSİS class list. If they are wrong, go to the registration desk.`
+      : c.yanlis ? c.yanlis + ' This comes from the AnaSİS class list. If you think it is wrong, go to the registration desk.'
+      : 'First check in with your number and the code; your exam day, level and time will appear on the screen.',
+    bekleme: c => { const g = c.g; if (!g) return 'Jury information appears after you check in. First enter your number and the code on the TV.';
+      switch (g.kod) {
+        case 'bekle': return `Your group time is ${g.saat2}. Juries are filled in order; your jury will appear here at your group time or when your partner checks in. Waiting before your group time is normal.` + (g.erkenSon != null ? ' If you want to go in earlier, press "I\'m ready to go in early".' : '');
+        case 'trans': return `No partner was found in your group, so you were moved to the next slot (${g.saat2}). Your jury will appear here at that time. This does not affect your score.`;
+        case 'atandi': return `Your jury is set: ${g.j.lv} · Jury ${g.j.no} · Room ${g.j.room}, at ${g.saat}. Wait in front of the classroom; the jury will call you.` + (g.gecikme ? ' Your jury is running a few minutes late.' : '');
+        case 'gec': return `Because you checked in late, you are waiting for a free jury. If a jury becomes free before ${g.son}, it will appear here. Do not close this screen.`;
+        default: return 'According to your screen, you could not take the exam today. Go to the registration desk.'; } },
+    derslik: c => { const g = c.g; if (g && g.j && g.j.room) { const k = katAdi.en(g.j.room); return `Your room: ${g.j.room}${k ? ' (' + k + ')' : ''}, ${g.j.lv} · Jury ${g.j.no}. If you cannot find it, ask a staff member in the corridor or go to the registration desk.`; }
+      return 'Your room will appear on this screen when your jury is set. Keep watching the screen.'; },
+    es: c => { const g = c.g; if (!g) return 'Partners are matched after you check in. Please check in first.';
+      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Your partner: ${g.esler.join(', ')}. You do not need to look for your partner; wait in front of the classroom. If your partner does not come, the jury will examine you alone.` : 'You will take this exam alone; you do not need to wait for a partner.';
+      return 'You do not need to look for your partner. If your partner does not come, the system will match you with another student or move you to the next slot; your score is not affected. Keep watching the screen.'; }
+  },
+  ru: {
+    baslik: 'Автоматический ответ', anladim: 'Понятно', yineYaz: 'Проблема не решена – написать администрации',
+    kod: c => c.g ? 'Вы уже зарегистрировались, код больше не нужен. Не закрывайте этот экран.'
+      : 'Код меняется каждые 30 секунд. Отсканируйте QR-код на телевизоре ещё раз (код заполнится автоматически) или введите 4-значный код, который сейчас на экране. Проверьте также, что номер студента введён полностью.',
+    numara: c => c.g ? `Ваш номер есть в списке, вы зарегистрированы: ${c.g.ad} · ${c.g.lv} · ${c.g.cls}.`
+      : c.hata === 'liste' ? `Введённого номера${c.no ? ' (' + c.no + ')' : ''} нет в списке этого экзамена. Проверьте каждую цифру. Если номер верный, подойдите к столу регистрации.`
+      : 'Сначала введите номер и код с телевизора и зарегистрируйтесь. Если система ответит «нет в списке», проверьте номер; если он верный, подойдите к столу регистрации.',
+    gun: c => c.g ? `Ваши данные в системе: уровень ${c.g.lv}, группа ${c.g.cls}, время ${c.g.grup}. Они взяты из списка AnaSİS. Если данные неверны, подойдите к столу регистрации.`
+      : c.yanlis ? c.yanlis + ' Эти данные взяты из списка AnaSİS. Если вы считаете, что это ошибка, подойдите к столу регистрации.'
+      : 'Сначала зарегистрируйтесь с номером и кодом; день, уровень и время экзамена появятся на экране.',
+    bekleme: c => { const g = c.g; if (!g) return 'Информация о комиссии появится после регистрации. Сначала введите номер и код с телевизора.';
+      switch (g.kod) {
+        case 'bekle': return `Время вашей группы: ${g.saat2}. Комиссии заполняются по очереди; ваша комиссия появится здесь в это время или когда зарегистрируется ваш партнёр. Ждать до времени группы — нормально.` + (g.erkenSon != null ? ' Если хотите пройти раньше, нажмите «Готов(а) пройти раньше».' : '');
+        case 'trans': return `В вашей группе не нашлось партнёра, поэтому вы перенесены на следующее время (${g.saat2}). Тогда здесь появится ваша комиссия. На оценку это не влияет.`;
+        case 'atandi': return `Ваша комиссия назначена: ${g.j.lv} · Комиссия ${g.j.no} · Аудитория ${g.j.room}, время ${g.saat}. Ждите у аудитории; вас вызовут.` + (g.gecikme ? ' Комиссия задерживается на несколько минут.' : '');
+        case 'gec': return `Вы зарегистрировались поздно, поэтому ожидается свободная комиссия. Если до ${g.son} освободится комиссия, она появится здесь. Не закрывайте экран.`;
+        default: return 'Судя по экрану, сегодня вы не можете сдать экзамен. Подойдите к столу регистрации.'; } },
+    derslik: c => { const g = c.g; if (g && g.j && g.j.room) { const k = katAdi.ru(g.j.room); return `Ваша аудитория: ${g.j.room}${k ? ' (' + k + ')' : ''}, ${g.j.lv} · Комиссия ${g.j.no}. Если не можете найти, спросите дежурного в коридоре или подойдите к столу регистрации.`; }
+      return 'Аудитория появится на этом экране, когда будет назначена комиссия. Следите за экраном.'; },
+    es: c => { const g = c.g; if (!g) return 'Партнёр назначается после регистрации. Сначала зарегистрируйтесь.';
+      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Ваш партнёр: ${g.esler.join(', ')}. Искать партнёра не нужно; ждите у аудитории. Если партнёр не придёт, комиссия примет экзамен у вас одного (одной).` : 'Вы сдаёте экзамен один (одна); ждать партнёра не нужно.';
+      return 'Искать партнёра не нужно. Если партнёр не придёт, система назначит вам другого студента или перенесёт на следующее время; на оценку это не влияет. Следите за экраном.'; }
+  }
+};
+
 </script>
 
 <script>
 const KOD = $('#app').dataset.c || '';
 let oturum = null, sonG = null, mesaj = '', yanlis = '', timer = null;
 let dil = store.get('dil'), dilEkrani = !dil;            // ilk açılışta dil seçimi
+let skat = null, yazAcik = false, sorunNo = '', sorunMetin = '', sonHata = '', sonNo = '';
 let sorunAcik = false, sorunMesaj = '', sorunTamam = null, mesajlar = [], anket = { l: [] }, anketMesaj = '';
 try { oturum = JSON.parse(store.get('ogr') || 'null'); } catch (e) { oturum = null; }
 let mKey = []; try { mKey = JSON.parse(store.get('ogrmsj') || '[]'); } catch (e) { mKey = []; }
@@ -420,14 +502,22 @@ function dilLink() { return `<button class="btn sm ghost" data-act="dilEkrani">D
 /* ---------- sorun bildirme ---------- */
 function vSorunBtn() { return `<button class="btn bad ghost" data-act="sorunAc">${esc(L().sorunBtn)}</button>`; }
 function vSorun(girissiz) {
-  const t = L();
+  const t = L(), O = OTO[dil || 'tr'] || OTO.tr;
   if (sorunTamam) return `<div class="panel stack"><div class="note ${sorunTamam.acil ? 'n-bad' : 'n-ok'}">${esc(t.gonderildi)}${sorunTamam.acil ? `<br><b>${esc(t.acilNot)}</b>` : ''}</div><div><button class="btn sm ghost" data-act="sorunKapat">OK</button></div></div>`;
+  /* MehDer (30.10.2026, prova): seçilen soruna sistem ekrandaki duruma göre hemen cevap verir; çözülmezse yönetime yazılır.
+     Acil ve Diğer doğrudan yönetime gider. */
+  if (!sorunNo) sorunNo = sonNo || (($('#no') || {}).value || '').replace(/\D/g, '');
+  const oto = skat && O[skat] ? O[skat]({ g: oturum ? sonG : null, hata: sonHata, yanlis, no: sorunNo }) : '';
+  const yaz = skat && (!oto || yazAcik);
   return `<form class="panel stack" data-f="sorun"><div class="big">${esc(t.sorunBaslik)}</div>
-    ${girissiz ? `<label class="f">${esc(t.no)}<input id="sno" inputmode="numeric" autocomplete="off" value="${esc(($('#no') || {}).value || '')}"></label>` : ''}
-    <div class="secim">${SORUN_SIRA.map(k => `<label class="ck"><input type="radio" name="skat" value="${k}"> ${esc(t.sorun[k])}</label>`).join('')}</div>
-    <label class="f" id="saciklama">${esc(t.aciklama)}<textarea id="smetin" rows="3" maxlength="600"></textarea></label><p class="small muted">${esc(t.yazDil)}</p>
+    ${girissiz ? `<label class="f">${esc(t.no)}<input id="sno" inputmode="numeric" autocomplete="off" value="${esc(sorunNo)}"></label>` : ''}
+    <div class="secim">${SORUN_SIRA.map(k => `<label class="ck"><input type="radio" name="skat" value="${k}" ${skat === k ? 'checked' : ''}> <span>${esc(t.sorun[k])}</span></label>`).join('')}</div>
+    ${oto && !yazAcik ? `<div class="note n-hl oto"><b>${esc(O.baslik)}</b><div>${esc(oto)}</div></div>
+      <div class="row"><button class="btn" type="button" data-act="sorunKapat">${esc(O.anladim)}</button><button class="btn ghost" type="button" data-act="yineYaz">${esc(O.yineYaz)}</button></div>` : ''}
+    ${yaz ? `<label class="f" id="saciklama">${esc(skat === 'diger' ? t.aciklamaZ : t.aciklama)}<textarea id="smetin" rows="3" maxlength="600">${esc(sorunMetin)}</textarea></label><p class="small muted">${esc(t.yazDil)}</p>` : ''}
     ${sorunMesaj ? `<div class="note n-bad">${esc(sorunMesaj)}</div>` : ''}
-    <div class="row"><button class="btn" type="submit">${esc(t.gonder)}</button><button class="btn ghost" type="button" data-act="sorunKapat">${esc(t.vazgec)}</button></div></form>`;
+    ${yaz ? `<div class="row"><button class="btn" type="submit">${esc(t.gonder)}</button><button class="btn ghost" type="button" data-act="sorunKapat">${esc(t.vazgec)}</button></div>`
+      : !skat ? `<div class="row"><button class="btn ghost" type="button" data-act="sorunKapat">${esc(t.vazgec)}</button></div>` : ''}</form>`;
 }
 function vMesajlar() {
   if (!mesajlar.length) return '';
@@ -525,12 +615,12 @@ document.addEventListener('submit', async e => {
   try {
     if (f === 'giris') {
       mesaj = ''; yanlis = '';
-      const r = await run('apiOgrenciGiris', $('#no').value, $('#kod').value);
-      if (r.err) mesaj = errMetin(r); else if (r.wrong) yanlis = t.yanlisGun(r.wrongGun, r.wrongTarih, r.wrongSaat);
+      sonNo = $('#no').value.replace(/\D/g, ''); const r = await run('apiOgrenciGiris', $('#no').value, $('#kod').value);
+      sonHata = r.errKod || (r.err ? 'diger' : ''); if (r.err) mesaj = errMetin(r); else if (r.wrong) yanlis = t.yanlisGun(r.wrongGun, r.wrongTarih, r.wrongSaat);
       else { oturum = { no: r.no, anahtar: r.anahtar }; store.set('ogr', JSON.stringify(oturum)); sonG = r.g; }
     } else if (f === 'sorun') {
       sorunMesaj = '';
-      const kat = (e.target.querySelector('input[name=skat]:checked') || {}).value, metin = $('#smetin').value.trim();
+      const kat = skat, metin = ($('#smetin') ? $('#smetin').value : sorunMetin).trim();
       const no = oturum ? oturum.no : ($('#sno') ? $('#sno').value.replace(/\D/g, '') : '');
       if (!no) sorunMesaj = t.e_numara; else if (!kat) sorunMesaj = t.e_sec; else if (kat === 'diger' && !metin) sorunMesaj = t.e_aciklama;
       else {
@@ -564,17 +654,20 @@ function anketOku() {
 }
 document.addEventListener('change', e => {
   if (e.target.closest('form[data-f=anket]')) { anketOku(); if (e.target.tagName === 'TEXTAREA') return; render(); return; }   // yazı kutusundan çıkınca yeniden çizme: aynı anda yapılan dokunuş kaybolmasın
-  if (e.target.name === 'skat') { const z = e.target.value === 'diger'; const l = $('#saciklama'); if (l) l.firstChild.textContent = z ? L().aciklamaZ : L().aciklama; }
+  if (e.target.name === 'skat') { if ($('#smetin')) sorunMetin = $('#smetin').value; skat = e.target.value; yazAcik = false; sorunMesaj = ''; render(); }
 });
 document.addEventListener('input', e => {
+  if (e.target.id === 'sno') sorunNo = e.target.value.replace(/\D/g, '');
+  if (e.target.id === 'smetin') sorunMetin = e.target.value;
   if (e.target.id === 'aDiger') { const vardi = !!(anket.diger || '').trim(); anket.diger = e.target.value; if (vardi !== !!anket.diger.trim()) { anketOku(); render(); const el = $('#aDiger'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
 });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return; const a = b.dataset.act;
   if (a === 'dil') { dil = b.dataset.v; store.set('dil', dil); dilEkrani = false; return render(); }
   if (a === 'dilEkrani') { dilEkrani = true; return render(); }
-  if (a === 'sorunAc') { sorunAcik = true; sorunTamam = null; sorunMesaj = ''; return render(); }
-  if (a === 'sorunKapat') { sorunAcik = false; sorunTamam = null; sorunMesaj = ''; return render(); }
+  if (a === 'sorunAc') { sorunNo = ''; sorunAcik = true; sorunTamam = null; sorunMesaj = ''; skat = null; yazAcik = false; sorunMetin = ''; return render(); }
+  if (a === 'yineYaz') { yazAcik = true; render(); const el = $('#smetin'); if (el) el.focus(); return; }
+  if (a === 'sorunKapat') { sorunAcik = false; sorunTamam = null; sorunMesaj = ''; skat = null; yazAcik = false; sorunMetin = ''; return render(); }
   if (a === 'cik') { store.del('ogr'); oturum = null; sonG = null; anket = { l: [] }; return render(); }
   if (a === 'erken') { b.disabled = true; try { const r = await run('apiErken', oturum.no, oturum.anahtar); if (r.g) sonG = r.g; } catch (err) { hataGoster(err); } render(); }
 });

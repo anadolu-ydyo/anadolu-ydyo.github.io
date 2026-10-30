@@ -157,7 +157,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%;resize:vertical}
 textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .dil{display:grid;gap:10px}.dil .btn{font-size:20px;padding:14px}
-.secim{display:grid;gap:6px}.secim .ck{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.secim{display:grid;gap:6px}.secim .ck{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);justify-content:flex-start;text-align:left;cursor:pointer}
+.ck input[type=radio],.ck input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
+.secim .ck:has(input:checked){border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.note.oto{display:flex;flex-direction:column;gap:4px}
 .q{padding:10px 0;border-top:1px solid var(--line)}
 .lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
@@ -305,14 +308,16 @@ function sorunListesi() {
 }
 function vSorun() {
   if (sorun.tamam) return `<div class="panel stack"><div class="note ${sorun.acil ? 'n-bad' : 'n-ok'}">Mesajınız yönetime iletildi. Cevap bu ekranda görünecek.${sorun.acil ? '<br><b>Acil durumda kayıt masasına da haber verin.</b>' : ''}</div><div><button class="btn sm ghost" data-act="sorunKapat">Tamam</button></div></div>`;
-  return `<form class="panel stack" data-f="sorun"><h3 style="margin:0">Sorun yaşıyorum</h3><div class="secim">${sorunListesi().map(k => `<label class="ck"><input type="radio" name="hkat" value="${k}"> ${esc(SORUN_ADLARI[k])}</label>`).join('')}</div>
-    <label class="f">Kısa açıklama (Diğer seçilirse zorunlu)<textarea id="hmetin" rows="3" maxlength="600"></textarea></label>
+  // MehDer (30.10.2026, prova): hocalar seçenek listesi yerine sorunu doğrudan yazar; yalnızca isteğe bağlı "Acil" işareti
+  return `<form class="panel stack" data-f="sorun"><h3 style="margin:0">Sorun yaşıyorum</h3>
+    <label class="f">Sorununuzu kısaca yazın<textarea id="hmetin" rows="4" maxlength="600" placeholder="Ör. A Jüri 3, derslik 116: kamera kayıt almıyor."></textarea></label>
+    <label class="ck"><input type="checkbox" id="hacil"> Acil durum (sağlık / güvenlik)</label>
     ${sorun.mesaj ? `<div class="note n-bad">${esc(sorun.mesaj)}</div>` : ''}<div class="row"><button class="btn" type="submit">Gönder</button><button class="btn ghost" type="button" data-act="sorunKapat">Vazgeç</button></div></form>`;
 }
 function vMesajlar(L, hepsi) {
   const l = (L || []).filter(m => hepsi || m.durum !== 'cozuldu'); if (!l.length) return '';
   const dd = { acik: 'Cevap bekleniyor', cevap: 'Cevaplandı', cozuldu: 'Çözüldü' };
-  return `<div class="panel stack"><h3 style="margin:0">Mesajlarım</h3>${l.map(m => `<div class="msg ${m.acil ? 'acil' : ''}"><div class="small muted">${esc(m.saat)} · ${esc(m.katAd)} · <b>${dd[m.durum] || m.durum}</b></div>${m.metin ? `<div>${esc(m.metin)}</div>` : ''}
+  return `<div class="panel stack"><h3 style="margin:0">Mesajlarım</h3>${l.map(m => `<div class="msg ${m.acil ? 'acil' : ''}"><div class="small muted">${esc(m.saat)}${m.kat === 'diger' ? '' : ' · ' + esc(m.kat === 'acil' ? 'Acil' : m.katAd)} · <b>${dd[m.durum] || m.durum}</b></div>${m.metin ? `<div>${esc(m.metin)}</div>` : ''}
     ${m.cev.map(c => `<div class="cv"><div class="small muted">Yönetim · ${esc(c.saat)}</div><div>${esc(c.metin)}</div></div>`).join('')}</div>`).join('')}</div>`;
 }
 /* ---------- görüş ve öneri anketi ---------- */
@@ -437,8 +442,8 @@ function alertKutusu(m) { const h = $('#hata'); h.textContent = m; h.hidden = fa
 document.addEventListener('submit', async e => {
   e.preventDefault(); const f = e.target.dataset.f; giris.mesaj = '';
   if (f === 'sorun') {
-    const kat = (e.target.querySelector('input[name=hkat]:checked') || {}).value, metin = $('#hmetin').value.trim(); sorun.mesaj = '';
-    if (!kat) sorun.mesaj = 'Bir seçenek seçin.'; else if (kat === 'diger' && !metin) sorun.mesaj = 'Kısa bir açıklama yazın.';
+    const kat = $('#hacil') && $('#hacil').checked ? 'acil' : 'diger', metin = $('#hmetin').value.trim(); sorun.mesaj = '';
+    if (!metin) sorun.mesaj = 'Sorununuzu kısaca yazın.';
     else { try { const r = await run('apiHocaSorun', ot || null, K, kat, metin); if (r.err) sorun.mesaj = r.err; else { sorun.tamam = true; sorun.acil = kat === 'acil'; if (V) V.msj = r.m; else girisMsj = r.m; } } catch (err) { hataGoster(err); } }
     return render(true);
   }
