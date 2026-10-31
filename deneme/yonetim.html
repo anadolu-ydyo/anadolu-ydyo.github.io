@@ -161,6 +161,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .ck input[type=radio],.ck input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
 .secim .ck:has(input:checked){border-color:var(--accent);background:var(--accent-soft);font-weight:600}
 .note.oto{display:flex;flex-direction:column;gap:4px}
+.tvduyuru{margin-bottom:16px;text-align:center}.tvduyuru #duyuruTr{font-size:46px;font-weight:800;line-height:1.15;color:var(--ink)}.tvduyuru .en{font-size:26px;color:var(--ink);opacity:.85}
 .q{padding:10px 0;border-top:1px solid var(--line)}
 .lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
@@ -316,6 +317,39 @@ function vMesaj() {
     ${m.durum !== 'cozuldu' ? `<div class="row" style="align-items:flex-end"><textarea id="cv-${m.id}" rows="2" placeholder="Cevabınız${m.dil && m.dil !== 'tr' ? ' (Türkçe yazın; öğrencinin diline çevrilir)' : ''}" style="flex:1 1 260px">${esc(cvTaslak[m.id] || '')}</textarea>
       <button class="btn sm" data-act="cevap" data-id="${m.id}">Cevap gönder</button><button class="btn sm ghost" data-act="cozuldu" data-id="${m.id}">Çözüldü</button></div>` : ''}</div>`).join('')}</div>`;
 }
+/* Araçlar (MehDer, 1.11.2026): öğrenciyi jüriye ata · yeniden sınava al · jüriye mesaj · TV duyurusu · öğrenciye mesaj */
+const arac = { no: '', jid: '', k: '', jsec: [], jhepsi: false, jmetin: '', tvmetin: '', tvdk: '10', ono: '', ometin: '' };
+function vAraclar() {
+  const A = V.araclar || { juriler: [], slotlar: [], jmsj: [], omsj: [], geriAlinabilir: [] };
+  if (!arac.k && A.simdi != null) arac.k = String(Math.max(0, A.simdi + 1 < A.slotlar.length ? A.simdi + 1 : A.simdi));
+  const jOpt = A.juriler.map(j => `<option value="${esc(j.jid)}" ${arac.jid === j.jid ? 'selected' : ''}>${esc(j.ad)} · Derslik ${esc(j.room)}</option>`).join('');
+  const kOpt = A.slotlar.map((x, i) => `<option value="${i}" ${String(arac.k) === String(i) ? 'selected' : ''}>${esc(x)}${i === A.slotlar.length - 1 ? ' (yedek)' : ''}</option>`).join('');
+  return `<div class="stack">${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}
+  <div class="panel stack"><h3 style="margin:0">1. Öğrenciyi jüriye ata</h3><p class="small muted">Sistemin kuralları bu atamada devre dışıdır; karar yönetimindir. Öğrencinin, jürinin ve TV'nin ekranında görünür.</p>
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap"><label class="f">Öğrenci no<input data-a="no" value="${esc(arac.no)}" inputmode="numeric" style="width:150px"></label>
+    <label class="f">Jüri<select data-a="jid"><option value="">Seçin</option>${jOpt}</select></label><label class="f">Slot<select data-a="k">${kOpt}</select></label>
+    <button class="btn" data-act="aAta">Ata</button></div></div>
+  <div class="panel stack"><h3 style="margin:0">2. Yeniden sınava al</h3><p class="small muted">"Gelmedi" ya da "alınamadı" olan öğrenci kayıt masasına gelirse: G kalkar, öğrenci öncelikli olarak beklemeye döner (isterseniz sonra 1. araçla doğrudan jüriye atayın).</p>
+    ${A.geriAlinabilir.length ? `<div class="scroll"><table><tbody>${A.geriAlinabilir.map(o => `<tr><td><b>${esc(o.ad)}</b> <span class="mono small">${esc(o.no)}</span></td><td>${esc(o.lv)}</td><td>${o.st === 'gelmedi' ? 'Gelmedi' : 'Alınamadı'}</td><td><button class="btn sm" data-act="aYeniden" data-no="${esc(o.no)}">Yeniden sınava al</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="small muted">Şu an "Gelmedi" ya da "alınamadı" öğrenci yok.</p>'}</div>
+  <div class="panel stack"><h3 style="margin:0">3. Jüriye mesaj</h3>
+    <label class="ck"><input type="checkbox" data-a="jhepsi" ${arac.jhepsi ? 'checked' : ''}> <b>Tüm jüriler</b></label>
+    ${arac.jhepsi ? '' : `<div class="row" style="flex-wrap:wrap;gap:6px">${A.juriler.map(j => `<label class="ck" style="border:1px solid var(--line);border-radius:8px;padding:6px 9px"><input type="checkbox" data-jsec="${esc(j.jid)}" ${arac.jsec.indexOf(j.jid) >= 0 ? 'checked' : ''}> ${esc(j.ad)}</label>`).join('')}</div>`}
+    <label class="f">Mesaj<textarea data-a="jmetin" rows="2" maxlength="600">${esc(arac.jmetin)}</textarea></label><div><button class="btn" data-act="aJmesaj">Jüri ekranına gönder</button></div>
+    ${A.jmsj.length ? `<div class="scroll"><table><thead><tr><th>Saat</th><th>Kime</th><th>Mesaj</th><th>Okuyan</th></tr></thead><tbody>${A.jmsj.map(m => `<tr><td class="mono">${esc(m.saat)}</td><td>${esc(m.kime)}</td><td>${esc(m.metin)}</td><td>${m.okuyan} / ${m.toplam}${m.okumayan.length && m.okumayan.length <= 6 ? `<br><span class="small muted">Okumayan: ${esc(m.okumayan.join(', '))}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}</div>
+  <div class="panel stack"><h3 style="margin:0">4. TV duyurusu</h3><p class="small muted">TV'de QR'ın üstünde büyük harflerle görünür; altına otomatik İngilizce çevirisi eklenir.</p>
+    ${A.tvd ? `<div class="note n-hl"><b>Şu an TV'de (${A.tvd.kalan} dk kaldı):</b> ${esc(A.tvd.metin)}${A.tvd.en ? `<br><span class="small">${esc(A.tvd.en)}</span>` : ''} <button class="btn sm ghost" data-act="aTvKaldir">Kaldır</button></div>` : ''}
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap"><label class="f" style="flex:1 1 300px">Duyuru<input data-a="tvmetin" value="${esc(arac.tvmetin)}" maxlength="300"></label><label class="f">Süre (dk)<input data-a="tvdk" value="${esc(arac.tvdk)}" inputmode="numeric" style="width:70px"></label><button class="btn" data-act="aTv">TV'de göster</button></div></div>
+  <div class="panel stack"><h3 style="margin:0">5. Öğrenciye mesaj</h3><p class="small muted">Öğrencinin telefonunda kendi dilinde (otomatik çeviri) ve titreşimle görünür; öğrenci "Tamam, bana denileni yapıyorum" düğmesine basar.</p>
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap"><label class="f">Öğrenci no<input data-a="ono" value="${esc(arac.ono)}" inputmode="numeric" style="width:150px"></label><label class="f" style="flex:1 1 300px">Mesaj<input data-a="ometin" value="${esc(arac.ometin)}" maxlength="600"></label><button class="btn" data-act="aOmesaj">Gönder</button></div>
+    ${A.omsj.length ? `<div class="scroll"><table><thead><tr><th>Saat</th><th>Öğrenci</th><th>Mesaj</th><th>Durum</th></tr></thead><tbody>${A.omsj.map(m => `<tr><td class="mono">${esc(m.saat)}</td><td>${esc(m.ad)} <span class="mono small">${esc(m.no)}</span></td><td>${esc(m.metin)}</td><td>${m.onay ? `<span class="pill p-ok">Onayladı ${esc(m.onay)}</span>` : '<span class="pill p-warn">Onay bekleniyor</span>'}</td></tr>`).join('')}</tbody></table></div>` : ''}</div></div>`;
+}
+document.addEventListener('input', e => { const a = e.target.dataset && e.target.dataset.a; if (a && a !== 'jhepsi') arac[a] = e.target.value; });
+document.addEventListener('change', e => {
+  const d = e.target.dataset || {};
+  if (d.a === 'jhepsi') { arac.jhepsi = e.target.checked; render(); }
+  else if (d.a) arac[d.a] = e.target.value;
+  if (d.jsec) { arac.jsec = arac.jsec.filter(x => x !== d.jsec); if (e.target.checked) arac.jsec.push(d.jsec); }
+});
 function vYayin() {
   const D = V.duzeyler || [];
   return `<div class="panel stack"><h3 style="margin:0">Speaking notlarının öğrencilere yayımlanması</h3>
@@ -349,8 +383,8 @@ function render() {
   if (!V) { $('#ust').hidden = true; $('#app').innerHTML = vGiris(); return; }
   $('#ust').hidden = false;
   const ac = acikSay();
-  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['kayit', 'Kayıt']];
-  let b = tab === 'canli' ? vCanli() : tab === 'mesaj' ? vMesaj() : tab === 'yayin' ? vYayin() : tab === 'anket' ? vAnket() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
+  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['araclar', 'Araçlar'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['kayit', 'Kayıt']];
+  let b = tab === 'canli' ? vCanli() : tab === 'mesaj' ? vMesaj() : tab === 'yayin' ? vYayin() : tab === 'anket' ? vAnket() : tab === 'araclar' ? vAraclar() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
     : tab === 'sonuc' ? `<div class="panel stack"><p>Sınıf not listeleri tablo dosyasındaki "Speaking Sonuçları" ve "Writing Sonuçları" sayfalarına yazılır; oradan Excel olarak indirilir. Önce MehDer'in bilgisayarına kaydedilir, onaydan sonra AnaSİS hocalarına gönderilir.</p><div><button class="btn" data-act="sonuc">Sonuç sayfalarını şimdi yaz</button></div>${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}</div>`
     : `<div class="panel log">${V.kayit.map(x => `<div>${esc(x)}</div>`).join('')}</div>`;
   $('#app').innerHTML = `<div class="tabs">${T.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>` + vUyari() + b;
@@ -381,6 +415,13 @@ document.addEventListener('click', async e => {
     if (d.act === 'yerine') { const r = await run('apiYonetimIslem', ot, 'yerine', { id: d.id }); if (r.hocaOturum) { window.open(`${URL0}?v=hoca&k=${encodeURIComponent(r.token)}&o=${encodeURIComponent(r.hocaOturum)}`, '_blank'); } }
     if (d.act === 'sonuc') { const r = await run('apiYonetimIslem', ot, 'sonuc', {}); mesaj = r.mesaj || ''; }
     if (d.act === 'cevap') { const el = document.getElementById('cv-' + d.id), m = ((el ? el.value : '') || cvTaslak[d.id] || '').trim(); if (m) { const r = await run('apiYonetimIslem', ot, 'cevap', { id: d.id, metin: m }); mesaj = r.mesaj || ''; if (r.v) V = r.v; if (!r.hata) delete cvTaslak[d.id]; } else mesaj = 'Önce cevabı yazın.'; }
+    const yi = (islem, a) => run('apiYonetimIslem', ot, islem, a).then(r => { mesaj = r.mesaj || ''; if (r.v) V = r.v; return r; });
+    if (d.act === 'aAta') { if (!arac.no || !arac.jid) mesaj = 'Öğrenci no ve jüri seçin.'; else { const r = await yi('ata', { no: arac.no, jid: arac.jid, k: Number(arac.k) }); if (/atandı/.test(r.mesaj || '')) arac.no = ''; } }
+    if (d.act === 'aYeniden') await yi('yeniden', { no: d.no });
+    if (d.act === 'aJmesaj') { if (!arac.jmetin.trim()) mesaj = 'Mesajı yazın.'; else { const r = await yi('jmesaj', { jids: arac.jsec, hepsi: arac.jhepsi, metin: arac.jmetin }); if (/gönderildi/.test(r.mesaj || '')) arac.jmetin = ''; } }
+    if (d.act === 'aTv') { const r = await yi('tv', { metin: arac.tvmetin, dk: Number(arac.tvdk) || 10 }); if (/görünecek/.test(r.mesaj || '')) arac.tvmetin = ''; }
+    if (d.act === 'aTvKaldir') await yi('tvkaldir', {});
+    if (d.act === 'aOmesaj') { if (!arac.ono || !arac.ometin.trim()) mesaj = 'Öğrenci no ve mesajı yazın.'; else { const r = await yi('omesaj', { no: arac.ono, metin: arac.ometin }); if (/gönderildi/.test(r.mesaj || '')) { arac.ometin = ''; } } }
     if (d.act === 'cozuldu') { const r = await run('apiYonetimIslem', ot, 'cozuldu', { id: d.id }); if (r.v) V = r.v; mesaj = ''; }
     if (d.act === 'yayinla') { if (!d.zorla || confirm('Düzey henüz "hazır" değil (süren sınav ya da kesinleşmemiş not olabilir). Yine de yayımlansın mı?')) { const r = await run('apiYonetimIslem', ot, 'yayinla', { key: d.key, zorla: !!d.zorla }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
     sonAcik = acikSay();

@@ -161,6 +161,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .ck input[type=radio],.ck input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
 .secim .ck:has(input:checked){border-color:var(--accent);background:var(--accent-soft);font-weight:600}
 .note.oto{display:flex;flex-direction:column;gap:4px}
+.tvduyuru{margin-bottom:16px;text-align:center}.tvduyuru #duyuruTr{font-size:46px;font-weight:800;line-height:1.15;color:var(--ink)}.tvduyuru .en{font-size:26px;color:var(--ink);opacity:.85}
 .q{padding:10px 0;border-top:1px solid var(--line)}
 .lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
@@ -180,6 +181,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <body class="tvpage">
 <div class="wrap" lang="tr" style="max-width:1600px;padding-top:20px">
   <div class="note n-bad" id="hata" hidden></div>
+  <div class="res r-hl tvduyuru" id="duyuru" hidden><div id="duyuruTr"></div><div class="en" id="duyuruEn" lang="en"></div></div>
   <main id="app" class="tv">
     <div class="panel qrbox"><h2>İngilizce Speaking Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p><p class="muted en" lang="en">Scan the QR code and enter your student number. If it does not open, use the code below.</p>
       <div id="qr"></div><div class="code" id="kod">----</div><div class="bar"><i id="bar" style="width:100%"></i></div>
@@ -288,6 +290,7 @@ function ciz(v) {
   $('#liste').innerHTML = v.satirlar.map(x => `<li class="${x.late ? 'late' : ''}"><span class="tm">${esc(x.saat)}</span><b>${esc(x.txt)}</b></li>`).join('') || '<li><span class="tm">—</span><span class="muted">Henüz okutma yok.</span></li>';
   if (v.url !== sonUrl && typeof QRCode === 'function') { sonUrl = v.url; $('#qr').innerHTML = ''; qr = new QRCode($('#qr'), { text: v.url, width: 340, height: 340, correctLevel: QRCode.CorrectLevel.M }); }
   bitis = Date.now() + v.kalan * 1000;
+  const d = v.duyuru; $('#duyuru').hidden = !d; if (d) { $('#duyuruTr').textContent = d.metin; $('#duyuruEn').textContent = d.en || ''; }
 }
 async function yenile() { try { ciz(await run('apiTV')); $('#hata').hidden = true; } catch (e) { hataGoster(e); } }
 setInterval(() => { const k = Math.max(0, bitis - Date.now()); $('#bar').style.width = (k / 300) + '%'; if (k <= 0) yenile(); }, 500);

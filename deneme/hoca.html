@@ -161,6 +161,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .ck input[type=radio],.ck input[type=checkbox]{width:auto;flex:0 0 auto;margin:0}
 .secim .ck:has(input:checked){border-color:var(--accent);background:var(--accent-soft);font-weight:600}
 .note.oto{display:flex;flex-direction:column;gap:4px}
+.tvduyuru{margin-bottom:16px;text-align:center}.tvduyuru #duyuruTr{font-size:46px;font-weight:800;line-height:1.15;color:var(--ink)}.tvduyuru .en{font-size:26px;color:var(--ink);opacity:.85}
 .q{padding:10px 0;border-top:1px solid var(--line)}
 .lik{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .lik label{flex:1 1 90px;border:1px solid var(--line);border-radius:8px;padding:8px 6px;cursor:pointer;text-align:center;font-size:14px;background:var(--surface);position:relative}
@@ -374,15 +375,17 @@ function vJuri(proj) {
   }
   const ek = J.ek.map(e => e.tur === 1 ? `<div class="note n-warn">Yeni çiftin gelmesine ${e.kalan} dakikanız kalmıştır.<div class="row" style="margin-top:8px"><button class="btn sm" data-act="ek" data-k="${e.k}">Ek süre istiyorum (Sınavınız bitince SINAV BİTTİ butonuna basabilirsiniz)</button></div></div>`
     : e.tur === 2 ? `<div class="note n-warn">Ek süre doldu.<div class="row" style="margin-top:8px"><button class="btn sm" data-act="ek" data-k="${e.k}">İkinci kez ek süre istiyorum (Sınavınız bitince SINAV BİTTİ butonuna basabilirsiniz)</button></div></div>`
-    : `<div class="note n-acc">Ek süre: ${esc(e.bitis)}'e kadar. Bu sürede size yeni çift gönderilmez.</div>`).join('');
+    : `<div class="note n-acc">Ek süre: ${esc(e.bitis)}'e kadar. Bu sürede size yeni çift gönderilmez.</div>`).join('')
+    + J.ek.filter(e => e.kapi).map(e => `<div class="note n-hl"><b>Kapı:</b> ${esc(e.kapi)}</div>`).join('');
+
   const kart = J.ciftler.map(p => {
     const uy = p.uyeler.map(u => {
       const ghost = u.mv || u.g === 'gelmedi', key = `gm|${p.id}|${u.no}`;
       const acts = p.bitti || ghost ? '' : `<div class="row"><button class="btn sm ${u.g === 'geldi' ? '' : 'ghost'}" data-act="geldi" data-p="${p.id}" data-no="${u.no}">Geldi</button>
         ${armed === key ? `<span class="inline-confirm">"Gelmedi" kesin mi? <button class="btn sm bad" data-act="gelmedi" data-p="${p.id}" data-no="${u.no}">Evet</button><button class="btn sm ghost" data-act="vazgec">Vazgeç</button></span>`
-          : `<button class="btn sm bad ghost" data-act="arm" data-key="${key}" ${p.cut ? '' : 'disabled'}>Gelmedi</button>`}${p.cut ? '' : `<span class="small muted">"Gelmedi" ${p.acilis}'te açılır</span>`}</div>`;
+          : `<button class="btn sm bad ghost" data-act="arm" data-key="${key}" ${p.cut ? '' : 'disabled'}>Gelmedi</button>`}${p.cut ? '' : `<span class="small muted">"Gelmedi" ${/^\d/.test(p.acilis) ? p.acilis + "'te" : p.acilis} açılır</span>`}</div>`;
       return `<div class="mem ${ghost ? 'ghost' : ''}"><div class="row" style="justify-content:space-between"><div><span class="nm">${esc(u.ad)}</span> <span class="small muted mono">${u.no}</span> <span class="small muted">${esc(u.cls)}</span> ${u.src ? `<span class="pill p-hl">${esc(u.src)}</span>` : ''}</div>
-        <div>${u.g === 'gelmedi' ? '<span class="pill p-bad">Gelmedi</span>' : u.mv ? `<span class="pill p-warn">${esc(u.mv)}</span>` : u.g === 'geldi' ? '<span class="pill p-ok">Geldi</span>' : ''}</div></div>${acts}${u.not ? notBlok(u.not, 'S', u.no, 'HESAPLA') : ''}</div>`;
+        <div>${u.g === 'gelmedi' ? '<span class="pill p-bad">Gelmedi</span>' : u.mv ? `<span class="pill p-warn">${esc(u.mv)}</span>` : u.g === 'geldi' ? '<span class="pill p-ok">Geldi</span>' : ''}</div></div>${u.kapi && !p.bitti ? `<div class="note n-hl small" style="margin:6px 0"><b>Kapı:</b> ${esc(u.kapi)}</div>` : ''}${acts}${u.not ? notBlok(u.not, 'S', u.no, 'HESAPLA') : ''}</div>`;
     }).join('');
     const foot = p.bitti ? '<div><span class="pill p-ok">SINAV BİTTİ</span></div>' : p.dolu ? `<div class="row"><button class="btn" data-act="bitti" data-p="${p.id}" ${p.nedenler.length ? 'disabled' : ''}>SINAV BİTTİ</button></div>${p.nedenler.length ? `<ul class="reasons">${p.nedenler.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}` : '';
     return `<div class="pair ${p.simdi ? 'now' : ''} ${p.bitti ? 'done' : ''}"><div class="ph"><b>${p.saat}${p.yedek ? ' (yedek slot)' : ''}</b><span class="pill p-acc">Bu slot: ${esc(p.set)}</span></div>${uy}${foot}</div>`;
@@ -390,8 +393,11 @@ function vJuri(proj) {
   return `<div class="stack"><div class="panel jhead"><div><div class="small muted">${esc(J.gun)} · ${esc(J.lv)} düzeyi (${J.max} puan) · saat ${esc(V.saat)}</div><h2 style="margin:0">${esc(J.ad)} · Derslik ${esc(J.room)}</h2><div class="small muted">Eşiniz: ${esc(J.es)}. Not girişi kör yapılır: HESAPLA'ya kadar eşinizin notlarını görmezsiniz.</div></div>
     <div class="row"><button class="btn sm ghost" data-act="pv" data-v="proj">Projeksiyon ekranını aç</button></div></div>
     ${J.kapali ? `<div class="note n-acc">Bu jüride sınavlar tamamlanmıştır; size yeni öğrenci gönderilmeyecektir. Mevcut çiftinizin sınavını ve not girişini bitirip SINAV BİTTİ'ye bastıktan sonra ayrılabilirsiniz.</div>` : ''}${ek}
-    ${anketKarti('S')}<div class="grid g2">${kart}</div></div>`;
+    ${anketKarti('S')}<div class="grid g2">${kart}</div>
+    <p class="small muted">Listenizde olmayan bir öğrenci kapıya gelirse: "Sorun yaşıyorum" düğmesine basın ve öğrencinin adını yazın. Öğrenciyi de kantin tarafındaki okul girişinin oradaki kayıt masasına yönlendirin.</p></div>`;
 }
+/* Jüri ekranında kısa ses (yönetim mesajı geldiğinde, bir kez) */
+let HUYAR = []; function uyar(k) { if (HUYAR.indexOf(k) >= 0) return; HUYAR.push(k); try { const A = window.AudioContext || window.webkitAudioContext; if (A) { const c = new A(); [0, 0.3].forEach(d => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = 760; g.gain.value = 0.2; o.connect(g); g.connect(c.destination); o.start(c.currentTime + d); o.stop(c.currentTime + d + 0.2); }); } } catch (e) { } }
 function vWriting() {
   const Z = V.zarflar;
   if (!Z.length) return '<div class="panel">Bu sınavda writing grading göreviniz yok.</div>';
@@ -419,7 +425,11 @@ function render(force) {
   else if (pv === 'gecmis') b = '<div class="panel"><h3>Geçmiş görevler</h3><p class="muted">Tamamlanan sınav görevleriniz sınav döneminden sonra burada salt okunur olarak listelenir.</p></div>';
   else if (pv === 'anketS' || pv === 'anketW') b = vAnket(pv.slice(-1));
   else b = vMenu();
-  const ust = (sorun.acik ? vSorun() : '') + vMesajlar(V.msj, pv === 'menu');
+  /* Yönetimden jüriye mesaj (MehDer, 1.11.2026): her ekranda en üstte, "Okudum" ile kapanır */
+  const jmL = (V.juri && V.juri.jmsj || []).filter(m => !m.okundu);
+  const jm = jmL.map(m => `<div class="res r-hl" style="margin-bottom:10px"><div class="big">Yönetimden mesaj · ${esc(m.saat)}</div><p><b>${esc(m.metin)}</b></p><div><button class="btn" data-act="okudum" data-id="${esc(m.id)}">Okudum</button></div></div>`).join('');
+  if (jm) uyar('jm:' + jmL.map(m => m.id).join(','));
+  const ust = jm + (sorun.acik ? vSorun() : '') + vMesajlar(V.msj, pv === 'menu');
   $('#app').innerHTML = (V.adm ? '<div class="note n-hl" style="margin-bottom:14px">Yönetim adına işlem yapıyorsunuz. Girilen notlar kayıtta "yönetim" olarak görünür.</div>' : '') + (ust ? `<div class="stack" style="margin-bottom:14px">${ust}</div>` : '') + b;
 }
 /* ---------- sunucu ---------- */
@@ -460,10 +470,10 @@ document.addEventListener('submit', async e => {
     if (f === 'giris') {
       const r = await run('apiHocaGiris', K, $('#pw').value, $('#rem').checked); giris.rem = $('#rem').checked;
       if (r.err) giris.mesaj = r.err; else if (r.yeniSifre) { giris.asama = 'yeni'; giris.onay = r.onay; }
-      else { ot = r.oturum; if (r.cihaz) store.set(CKEY, r.cihaz); return yukle(); }
+      else { ot = r.oturum; if (r.cihaz) store.set(CKEY, r.cihaz); try { document.activeElement.blur(); } catch (x) { } return yukle(); }   // Enter ile girişte ekran şifre kutusunda takılı kalmasın
     } else if (f === 'yeni') {
       const r = await run('apiSifreBelirle', K, giris.onay, $('#p1').value, $('#p2').value, !!giris.rem);
-      if (r.err) giris.mesaj = r.err; else { ot = r.oturum; if (r.cihaz) store.set(CKEY, r.cihaz); giris.asama = 'sifre'; return yukle(); }
+      if (r.err) giris.mesaj = r.err; else { ot = r.oturum; if (r.cihaz) store.set(CKEY, r.cihaz); giris.asama = 'sifre'; try { document.activeElement.blur(); } catch (x) { } return yukle(); }
     }
   } catch (err) { hataGoster(err); }
   render(true);
@@ -480,6 +490,7 @@ document.addEventListener('click', async e => {
     case 'vazgec': return render(true);
     case 'zarf': zarfAcik = d.c || null; return render(true);
     case 'geldi': case 'gelmedi': case 'bitti': b.disabled = true; armed = null; return islem(d.act, { p: d.p, no: d.no });
+    case 'okudum': b.disabled = true; return islem('okudum', { id: d.id });
     case 'ek': b.disabled = true; return islem('ek', { j: V.juri.jid, k: Number(d.k) });
     case 'hesapla': b.disabled = true; return islem('hesapla', gonderilecek('S', d.no), 'msg-S-' + d.no, () => taslakSil('S', d.no));
     case 'wKaydet': b.disabled = true; return islem('wKaydet', gonderilecek('W', d.no), 'msg-W-' + d.no, () => taslakSil('W', d.no));
@@ -513,7 +524,8 @@ setInterval(async () => {
   hTik++;
   if (!V) { if (girisMsj.some(m => m.durum === 'acik') && hTik % 3 === 0) { try { girisMsj = (await run('apiHocaMesajlar', K)).m || []; render(); } catch (e) { } } return; }
   const canli = pv === 'speaking' || pv === 'proj', bekleyen = (V.msj || []).some(m => m.durum === 'acik');
-  if (!ot || !(canli || (bekleyen && hTik % 3 === 0) || hTik % 12 === 0)) return;
+  const juriGunu = V.juri && !V.juri.yok;   // jüri günü: yönetim mesajları için 15 sn'de bir
+  if (!ot || !(canli || ((bekleyen || juriGunu) && hTik % 3 === 0) || hTik % 12 === 0)) return;
   try { const r = await run('apiHoca', ot); if (!r.err) { V = r; render(); } } catch (e) { }
 }, 5000);
 yukle();
