@@ -296,7 +296,7 @@ const DIL = {
     cagri: 'Jürin seni bekliyor!', birlesme: 'Eşin değişti; jürin ve dersliğin yukarıda. Hemen o dersliğe git.',
     ymsj_b: 'Yönetimden mesaj', ymsjOnay: 'Tamam, bana denileni yapıyorum', ymsjOk: 'Onayladın – teşekkürler',
     trans_b: 'Eşleştirme yapılamadı', trans_m: s => `Bir sonraki slotta (${s}) gireceksin; o slotta eşleştirmede ilk sıradasın. Telefon ekranını takip et; eşin belirlenince jürin burada görünecek.`,
-    juri: (lv, n, r) => `${lv} · Jüri ${n} · Derslik ${r}`, saat: 'Saat', es: 'Eşin', tek: 'Tek başına gireceksin',
+    juri: (lv, n, r) => `${lv} · Jüri ${n} · Derslik ${r}`, saat: 'Saat', es: 'Eşin', tek: 'Tek başına gireceksin', esYok: 'Henüz belli değil; sistem eşleştirecek', ekranAcik: 'Telefonunun ekranını kapatma: sistem seni bu ekrandan çağıracak.',
     atandi_m: 'Dersliğin önünde bekle; jüri seni çağıracak.', gecikme: 'Jüriniz birkaç dakika gecikecek, kapıda bekleyin.',
     sinavda_b: 'Sınavdasın', juriHocalari: 'Jüri hocaları',
     gec_b: 'Sınava geç kaldın', gec_m: s => `Bugün saat ${s}'e kadar eğer boş jüri olursa sınava çağırılabilirsin. Bu nedenle cep telefonunda sınav ekranını takip et. Ancak boş jüri olmazsa sınava alınamazsın.`,
@@ -341,7 +341,7 @@ const DIL = {
     cagri: 'Your jury is waiting for you!', birlesme: 'Your partner has changed; your jury and room are shown above. Go to that room now.',
     ymsj_b: 'Message from the administration', ymsjOnay: 'OK, I am doing what I was told', ymsjOk: 'Confirmed – thank you',
     trans_b: 'No partner could be matched', trans_m: s => `You will take the exam in the next slot (${s}); you are first in line for matching there. Keep watching your phone; your jury will appear here once your partner is set.`,
-    juri: (lv, n, r) => `${lv} · Jury ${n} · Room ${r}`, saat: 'Time', es: 'Your partner', tek: 'You will go in alone',
+    juri: (lv, n, r) => `${lv} · Jury ${n} · Room ${r}`, saat: 'Time', es: 'Your partner', tek: 'You will go in alone', esYok: 'Not yet known; the system will match you', ekranAcik: 'Keep your phone screen on: the system will call you on this screen.',
     atandi_m: 'Wait in front of the classroom; the jury will call you.', gecikme: 'Your jury will be a few minutes late; please wait at the door.',
     sinavda_b: 'You are in the exam', juriHocalari: 'Jury teachers',
     gec_b: 'You are late for the exam', gec_m: s => `If a jury becomes free before ${s} today, you may still be called. Keep following this screen on your phone. If no jury becomes free, you cannot take the exam today.`,
@@ -386,7 +386,7 @@ const DIL = {
     cagri: 'Комиссия ждёт вас!', birlesme: 'Ваш партнёр изменился; комиссия и аудитория указаны выше. Сразу идите в эту аудиторию.',
     ymsj_b: 'Сообщение от администрации', ymsjOnay: 'Хорошо, я делаю то, что мне сказали', ymsjOk: 'Подтверждено – спасибо',
     trans_b: 'Не удалось подобрать партнёра', trans_m: s => `Вы будете сдавать экзамен в следующем слоте (${s}); там вы первым(-ой) в очереди на подбор партнёра. Следите за телефоном; когда партнёр будет определён, здесь появится ваша комиссия.`,
-    juri: (lv, n, r) => `${lv} · Комиссия ${n} · Аудитория ${r}`, saat: 'Время', es: 'Ваш партнёр', tek: 'Вы будете сдавать один (одна)',
+    juri: (lv, n, r) => `${lv} · Комиссия ${n} · Аудитория ${r}`, saat: 'Время', es: 'Ваш партнёр', tek: 'Вы будете сдавать один (одна)', esYok: 'Пока не определён; система подберёт партнёра', ekranAcik: 'Не выключайте экран телефона: система вызовет вас через этот экран.',
     atandi_m: 'Ждите у аудитории; комиссия вас вызовет.', gecikme: 'Ваша комиссия задержится на несколько минут; подождите у двери.',
     sinavda_b: 'Вы на экзамене', juriHocalari: 'Преподаватели комиссии',
     gec_b: 'Вы опоздали на экзамен', gec_m: s => `Если сегодня до ${s} освободится комиссия, вас могут вызвать. Следите за этим экраном на телефоне. Если комиссия не освободится, сегодня вы не сможете сдать экзамен.`,
@@ -445,7 +445,7 @@ const OTO = {
     derslik: c => { const g = c.g; if (g && g.j && g.j.room) { const k = katAdi.tr(g.j.room); return `Dersliğin: ${g.j.room}${k ? ' (' + k + ')' : ''}, ${g.j.lv} · Jüri ${g.j.no}. Bulamazsan koridordaki görevliye sor ya da kayıt masasına git.`; }
       return 'Dersliğin, jüri bilgin gelince bu ekranda görünür. Şimdilik ekranı izle.'; },
     es: c => { const g = c.g; if (!g) return 'Eşleştirme giriş yaptıktan sonra yapılır. Önce giriş yap.';
-      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Eşin: ${g.esler.join(', ')}. Eşini aramana gerek yok; dersliğin önünde bekle. Eşin gelmezse sistem seni başka bir öğrenciyle eşleştirir ya da bir sonraki slota aktarır.` : 'Bu sınava tek başına gireceksin; eş beklemene gerek yok.';
+      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Eşin: ${g.esler.join(', ')}. Eşini aramana gerek yok; dersliğin önünde bekle. Eşin gelmezse sistem seni başka bir öğrenciyle eşleştirir ya da bir sonraki slota aktarır.` : (g.yedekTek ? 'Bu sınava tek başına gireceksin; eş beklemene gerek yok.' : 'Eşin henüz belli değil. Dersliğin önünde bekle; sistem seni bir öğrenciyle eşleştirir, kimse gelmezse bir sonraki slota aktarır. Tek başına sınava girmezsin.');
       return 'Eşini aramana gerek yok. Eşin gelmezse sistem seni başka bir öğrenciyle eşleştirir ya da bir sonraki slota aktarır; notun etkilenmez. Ekranı izle.'; }
   },
   en: {
@@ -468,7 +468,7 @@ const OTO = {
     derslik: c => { const g = c.g; if (g && g.j && g.j.room) { const k = katAdi.en(g.j.room); return `Your room: ${g.j.room}${k ? ' (' + k + ')' : ''}, ${g.j.lv} · Jury ${g.j.no}. If you cannot find it, ask a staff member in the corridor or go to the registration desk.`; }
       return 'Your room will appear on this screen when your jury is set. Keep watching the screen.'; },
     es: c => { const g = c.g; if (!g) return 'Partners are matched after you check in. Please check in first.';
-      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Your partner: ${g.esler.join(', ')}. You do not need to look for your partner; wait in front of the classroom. If your partner does not come, the system will match you with another student or move you to the next slot.` : 'You will take this exam alone; you do not need to wait for a partner.';
+      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Your partner: ${g.esler.join(', ')}. You do not need to look for your partner; wait in front of the classroom. If your partner does not come, the system will match you with another student or move you to the next slot.` : (g.yedekTek ? 'You will take this exam alone; you do not need to wait for a partner.' : 'Your partner is not known yet. Wait in front of the classroom; the system will match you with a student, or move you to the next slot if nobody comes. You will not take the exam alone.');
       return 'You do not need to look for your partner. If your partner does not come, the system will match you with another student or move you to the next slot; your score is not affected. Keep watching the screen.'; }
   },
   ru: {
@@ -491,7 +491,7 @@ const OTO = {
     derslik: c => { const g = c.g; if (g && g.j && g.j.room) { const k = katAdi.ru(g.j.room); return `Ваша аудитория: ${g.j.room}${k ? ' (' + k + ')' : ''}, ${g.j.lv} · Комиссия ${g.j.no}. Если не можете найти, спросите дежурного в коридоре или подойдите к столу регистрации.`; }
       return 'Аудитория появится на этом экране, когда будет назначена комиссия. Следите за экраном.'; },
     es: c => { const g = c.g; if (!g) return 'Партнёр назначается после регистрации. Сначала зарегистрируйтесь.';
-      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Ваш партнёр: ${g.esler.join(', ')}. Искать партнёра не нужно; ждите у аудитории. Если партнёр не придёт, система назначит вам другого студента или перенесёт на следующее время.` : 'Вы сдаёте экзамен один (одна); ждать партнёра не нужно.';
+      if (g.kod === 'atandi') return g.esler && g.esler.length ? `Ваш партнёр: ${g.esler.join(', ')}. Искать партнёра не нужно; ждите у аудитории. Если партнёр не придёт, система назначит вам другого студента или перенесёт на следующее время.` : (g.yedekTek ? 'Вы сдаёте экзамен один (одна); ждать партнёра не нужно.' : 'Ваш партнёр пока не определён. Ждите у аудитории; система подберёт вам студента, а если никто не придёт, перенесёт вас на следующее время. Один (одна) вы сдавать не будете.');
       return 'Искать партнёра не нужно. Если партнёр не придёт, система назначит вам другого студента или перенесёт на следующее время; на оценку это не влияет. Следите за экраном.'; }
   }
 };
@@ -574,10 +574,20 @@ let bekleyenAlarm = [];
 function alarmIste(k) { if (k && ALARM.indexOf(k) < 0) bekleyenAlarm.push(k); }
 function alarmCal() {
   if (!bekleyenAlarm.length) return;
+  if (document.hidden) return;   // ekran kapalıyken titreşim/ses çalmaz: ekran açılınca çalınır (MehDer provası 1.11)
   bekleyenAlarm.forEach(k => ALARM.push(k)); bekleyenAlarm = []; ALARM = ALARM.slice(-60); store.sset('alarm', JSON.stringify(ALARM));
   try { if (navigator.vibrate) navigator.vibrate([400, 150, 400, 150, 400]); } catch (e) { }
   try { const A = window.AudioContext || window.webkitAudioContext; if (A) { const c = new A(); [0, 0.3].forEach(d => { const o = c.createOscillator(), gn = c.createGain(); o.frequency.value = 880; gn.gain.value = 0.25; o.connect(gn); gn.connect(c.destination); o.start(c.currentTime + d); o.stop(c.currentTime + d + 0.2); }); } } catch (e) { }
 }
+/* Ekran açık kalsın (Screen Wake Lock): giriş yapmış öğrencinin telefonu sınav bitene kadar kararmasın; destekleyen tarayıcılarda. */
+let ekranKilidi = null;
+async function ekranAcikTut() {
+  try { if (!('wakeLock' in navigator) || document.hidden || ekranKilidi) return;
+    const durumKod = sonG && sonG.kod; if (!oturum || durumKod === 'bitti' || durumKod === 'gelmedi') return;
+    ekranKilidi = await navigator.wakeLock.request('screen'); ekranKilidi.addEventListener('release', () => { ekranKilidi = null; }); } catch (e) { ekranKilidi = null; }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { alarmCal(); ekranAcikTut(); } });
+document.addEventListener('click', () => { ekranAcikTut(); }, true);
 function vYonetimMsj(g) {
   if (!g.ymsj || !g.ymsj.length) return '';
   const t = L();
@@ -591,6 +601,9 @@ function durum(g) {
   if (g.davet) { alarmIste('davet:' + g.davet.id); ust += `<div class="res r-hl"><div class="big" style="font-size:24px">${esc(t.davet_b(g.davet.saat))}</div>${p(t.davet_m(g.davet.son))}<button class="btn big" data-act="davetOnay">${esc(t.davetOnay)}</button></div>`; }
   if (g.kayip) ust += `<div class="note n-warn">${esc(t.kayip(g.kayip.saat, g.kayip.kendi))}</div>`;
   if (g.donus) ust += `<div class="note n-warn">${esc(t.donus(g.donus.saat, g.donus.kendi))}</div>`;
+  /* Ekranı kapatma uyarısı yalnız sıra dışı öğrencilere (erken hazır, davetli, aktarılan, geç kalan, daveti kaçıran) – MehDer 1.11.2026 */
+  const siraDisi = (g.kod === 'bekle' && g.erken) || g.davet || g.kod === 'trans' || g.kod === 'gec' || g.kayip || g.donus;
+  const ekranNotu = siraDisi ? `<div class="note n-warn"><b>${esc(t.ekranAcik)}</b></div>` : '';
   switch (g.kod) {
     case 'bekle':
       ana = kutu('acc', t.bekle_b, p(t.bekle_m(g.saat2)));
@@ -598,13 +611,13 @@ function durum(g) {
       break;
     case 'trans': ana = kutu('warn', t.trans_b, p(t.trans_m(g.saat2))); break;
     case 'atandi':
-      ana = kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room), `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.tek)}</dd></dl>${p(t.atandi_m)}`);
+      ana = kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room), `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : (g.yedekTek ? t.tek : t.esYok))}</dd></dl>${p(t.atandi_m)}`);
       if (g.gecikme) ek = `<div class="note n-warn">${esc(t.gecikme)}</div>`;
       if (g.cagri) { alarmIste('cagri:' + g.cagri.id); ust += `<div class="res r-bad"><div class="big" style="font-size:26px">${esc(t.cagri)}</div><p><b>${esc(t.juri(g.j.lv, g.j.no, g.j.room))}</b></p></div>`; }
       if (g.birlesme) ek += `<div class="note n-warn">${esc(t.birlesme)}</div>`;
       break;
     case 'sinavda':
-      ana = kutu('ok', t.sinavda_b, `<p><b>${esc(t.juri(g.j.lv, g.j.no, g.j.room))}</b></p><dl class="kv"><dt>${esc(t.juriHocalari)}</dt><dd>${esc(g.hocalar.join(' – '))}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.tek)}</dd></dl>`);
+      ana = kutu('ok', t.sinavda_b, `<p><b>${esc(t.juri(g.j.lv, g.j.no, g.j.room))}</b></p><dl class="kv"><dt>${esc(t.juriHocalari)}</dt><dd>${esc(g.hocalar.join(' – '))}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : (g.yedekTek ? t.tek : t.esYok))}</dd></dl>`);
       break;
     case 'gec': ana = kutu('hl', t.gec_b, p(t.gec_m(g.son))); break;
     case 'alinamadi': ana = kutu('bad', t.alinamadi_b); break;
@@ -617,7 +630,7 @@ function durum(g) {
       break;
     default: ana = g.baslik ? kutu(g.renk || 'acc', g.baslik, p(g.metin)) : '';
   }
-  return bas(g) + `<div class="phone stack">${ust}${ana}${ek}<p class="small muted">${esc(t.yenilenir)}</p></div>` + `<div class="stack" style="margin-top:12px">${vSorunAlani(false, g.sorunAcik)}</div>` + alt(g);
+  return bas(g) + `<div class="phone stack">${ust}${ana}${ek}${ekranNotu}<p class="small muted">${esc(t.yenilenir)}</p></div>` + `<div class="stack" style="margin-top:12px">${vSorunAlani(false, g.sorunAcik)}</div>` + alt(g);
 }
 function bas(g) { return `<div class="phone" style="margin-bottom:10px"><div class="small muted">${esc(g.no)}</div><div class="big">${esc(g.ad)}</div><div class="small muted">${esc(g.lv)} · ${esc(g.cls)} · ${esc(L().grup)} ${esc(g.grup)}</div></div>`; }
 function alt() { return `<div class="row" style="margin-top:12px;justify-content:space-between">${dilLink()}<button class="btn sm ghost" data-act="cik">${esc(L().baskaOgr)}</button></div>`; }
@@ -641,7 +654,7 @@ function render() {
   ust();
   if (dilEkrani) { $('#app').innerHTML = vDil(); return; }
   $('#app').innerHTML = oturum && sonG ? durum(sonG) : form();
-  alarmCal();
+  alarmCal(); ekranAcikTut();
 }
 function errMetin(r) { const t = L(); return ({ kod: t.e_kod, liste: t.e_liste, gunyok: t.e_gunyok, sinir: t.e_sinir, numara: t.e_numara, aciklama: t.e_aciklama, sinavda: t.e_sinavda, yogun: t.e_yogun, eksik: t.e_anket })[r.errKod] || r.err; }
 async function mesajYenile() {
