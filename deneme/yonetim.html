@@ -139,6 +139,16 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .chip.bad{background:var(--bad-soft);border-color:transparent;color:var(--bad)}
 .chip.cl{color:var(--muted);border-style:dashed}
 .stats{display:flex;flex-wrap:wrap;gap:8px}
+.dztab{border-collapse:collapse;width:100%;font-size:14px}
+.dztab th,.dztab td{border:1px solid var(--line,#d7e0e0);padding:6px 10px;text-align:center}
+.dztab tr>th:first-child{text-align:left;font-weight:600;white-space:nowrap}
+.dztab tr:first-child th{background:var(--bg)}
+.dztab td:last-child,.dztab tr:first-child th:last-child{font-weight:700;background:var(--bg)}
+.dztab tr.kritik>th:first-child{color:#b3261e}
+.dzn{font:inherit;font-family:var(--f-mono);font-size:16px;font-weight:700;border:1px solid transparent;background:none;cursor:pointer;padding:2px 10px;border-radius:8px;color:inherit;text-decoration:underline dotted}
+.dzn:hover,.dzn.sec{border-color:currentColor}
+.dzn.kr{color:#b3261e;background:#fdecea}
+.dzliste{margin-top:10px}
 .stat{border:1px solid var(--line);border-radius:9px;padding:8px 12px;background:var(--surface);min-width:120px}
 .stat b{display:block;font-family:var(--f-mono);font-size:22px}
 .stat span{font-size:12px;color:var(--muted)}
@@ -279,6 +289,7 @@ function notBlok(v, g, no, butonAd) {
 
 <script>
 const URL0 = $('#app').dataset.url;
+let dzSec = null;   /* düzey tablosunda açık hücre: 'satır|sütun' */
 let ot = store.sget('yon'), V = null, tab = 'canli', mesaj = '', gmesaj = '', dsv = '', tik = 0, sonAcik = null, bekleyenCizim = false;
 function acikSay() { return V && V.msj ? V.msj.filter(m => m.durum === 'acik').length : 0; }
 function bip(acil) { try { const c = new (window.AudioContext || window.webkitAudioContext)(); [0, 0.25, acil ? 0.5 : null].filter(x => x != null).forEach(t0 => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = acil ? 880 : 660; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.2, c.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + t0 + 0.2); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + 0.22); }); } catch (e) { } }
@@ -293,7 +304,18 @@ function vCanli() {
       ${[0, 1, 2, 5].map(h => `<button class="btn sm ${V.deneme.hiz === h ? '' : 'ghost'}" data-act="hiz" data-v="${h}">${h === 0 ? 'Durdur' : '×' + h}</button>`).join('')}
       <input id="dsaat" placeholder="12:50" size="5" style="width:70px" value="${esc(dsv)}"><button class="btn sm ghost" data-act="saatAyarla">Saate atla</button>
       <button class="btn sm ghost" data-act="gun" data-v="${V.deneme.gun === 1 ? 2 : 1}">Gün ${V.deneme.gun === 1 ? 2 : 1}'e geç</button></div>` : '';
-  return `<div class="stack">${DS}<div class="stats">${V.sayilar.map(([l, n]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('')}</div>
+  const DT = V.dt ? (() => { const cols = V.dt.duzeyler.concat(['*']);
+    const th = `<tr><th></th>${cols.map(c => `<th>${c === '*' ? 'Toplam' : esc(c) + ' düzeyi'}</th>`).join('')}</tr>`;
+    const tr = V.dt.satirlar.map((r, i) => `<tr class="${r.kritik ? 'kritik' : ''}"><th>${esc(r.ad)}</th>${r.hucre.map((h, j) => { const sec = dzSec === i + '|' + j;
+      return `<td>${h.n ? `<button class="dzn ${sec ? 'sec' : ''} ${r.kritik ? 'kr' : ''}" data-act="dz" data-v="${i}|${j}" title="Listeyi göster">${h.n}</button>` : '<span class="muted">0</span>'}</td>`; }).join('')}</tr>`).join('');
+    let liste = '';
+    if (dzSec) { const [i, j] = dzSec.split('|').map(Number), r = V.dt.satirlar[i], h = r && r.hucre[j];
+      if (h && h.n) liste = `<div class="dzliste"><div class="row" style="justify-content:space-between;align-items:center"><h3>${esc(r.ad)} · ${cols[j] === '*' ? 'tüm düzeyler' : esc(cols[j]) + ' düzeyi'} (${h.n})</h3><button class="btn sm ghost" data-act="dz" data-v="">Kapat</button></div>
+        <div class="scroll"><table class="ozet"><thead><tr><th>Ad Soyad</th><th>No</th><th>Sınıf</th><th>Düzey</th><th>Ayrıntı</th></tr></thead><tbody>${h.l.map(x => `<tr><td>${esc(x[0])}</td><td>${esc(x[1])}</td><td>${esc(x[2])}</td><td>${esc(x[3])}</td><td>${esc(x[4])}</td></tr>`).join('')}</tbody></table></div></div>`;
+      else dzSec = null; }
+    return `<div class="panel"><h3>Öğrenci durumu (düzey bazında) · rakama tıklayınca liste açılır</h3><div class="scroll"><table class="dztab">${th}${tr}</table></div>${liste}</div>`; })()
+    : `<div class="stats">${V.sayilar.map(([l, n]) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`).join('')}</div>`;
+  return `<div class="stack">${DS}${DT}
     <div class="panel"><h3>Jüri ve slot tablosu · ${esc(V.gun)} · ${esc(V.saat)}</h3><div class="scroll"><table class="board">${head}${rows}</table></div>
     <p class="small muted" style="margin-top:6px">Mavi: sınavda/sırada · yeşil: SINAV BİTTİ · kırmızı: gelmedi · kesikli: aktarıldı ya da jüri kapandı.</p></div>
     <div class="panel lists">${L('Eş bekleyen', V.bekleyen)}${L('Aktarılan', V.aktarilan)}${L('Geç kalan – bekliyor (en az geç kalan üstte)', V.gec)}${L('Geç kaldı – sınava alınamadı', V.alinamadi)}</div>
@@ -405,6 +427,7 @@ document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return; const d = b.dataset;
   if (d.act === 'tab') { tab = d.v; mesaj = ''; return render(); }
+  if (d.act === 'dz') { dzSec = (d.v && dzSec !== d.v) ? d.v : null; return render(); }
   if (d.act === 'cikis') { await run('apiCikis', ot).catch(() => { }); store.sdel('yon'); ot = null; V = null; return render(); }
   b.disabled = true;
   try {
