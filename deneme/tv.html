@@ -236,7 +236,15 @@ function run(fn, ...a) {
   }
   return p;
 }
-function run0(fn, ...a) {
+/* Sunucu "MESGUL" derse (kilit beklemesi doldu, işlem YAPILMADI) aynı istek 3 kez daha, 1–4 sn arayla gönderilir (yük testi 3.11). */
+async function run0(fn, ...a) {
+  for (let i = 0; ; i++) {
+    try { return await run1(fn, ...a); }
+    catch (e) { if (!/^MESGUL/.test(String(e && e.message)) || i >= 3) { if (/^MESGUL/.test(String(e && e.message))) throw new Error('Sistem şu an çok yoğun; lütfen birkaç saniye sonra yeniden deneyin.'); throw e; }
+      await new Promise(r => setTimeout(r, 1000 + Math.random() * 3000)); }
+  }
+}
+function run1(fn, ...a) {
   if (!DIS_SAYFA) return new Promise((ok, no) => google.script.run.withSuccessHandler(ok).withFailureHandler(no)[fn](...a));
   // Otomatik yeniden deneme yok: not gönderme ve şifre denemesi iki kez işlenmesin.
   return fetch(window.API_ADRESI, { method: 'POST', credentials: 'omit', redirect: 'follow', cache: 'no-store',
