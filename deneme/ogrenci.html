@@ -318,7 +318,7 @@ const DIL = {
     atandi_m: 'Dersliğin önünde bekle; jüri seni çağıracak.', gecikme: 'Jüriniz birkaç dakika gecikecek, kapıda bekleyin.',
     sinavda_b: 'Sınavdasın', juriHocalari: 'Jüri hocaları',
     gec_b: 'Sınava geç kaldın', gec_m: s => `Bugün saat ${s}'e kadar eğer boş jüri olursa sınava çağırılabilirsin. Bu nedenle cep telefonunda sınav ekranını takip et. Ancak boş jüri olmazsa sınava alınamazsın.`,
-    alinamadi_b: 'Bugün boş jüri olmadığı için sınava alınamadın', red_b: 'Sınava geç kaldın; bugün sınava alınamazsın',
+    alinamadi_b: 'Bugün boş jüri olmadığı için sınava alınamadın', red_b: 'Sınav saatinden 5 dakikadan fazla geç kaldığın için konuşma sınavına giremezsin',
     gelmedi_b: 'Jüri seni "Gelmedi" olarak işaretledi', gelmedi_m: 'Hemen kantin tarafındaki okul girişinin oradaki kayıt masasına git.',
     bitti_b: 'Sınavın tamamlandı', bitti_bekle: 'Notun, düzeyindeki bütün sınavlar bitip yönetim yayımlayınca burada görünecek.',
     not_b: 'Speaking notun', anasis: "Kesin sonuç AnaSİS'te duyurulacaktır. Notunuzu AnaSİS'ten kontrol edin.",
@@ -363,7 +363,7 @@ const DIL = {
     atandi_m: 'Wait in front of the classroom; the jury will call you.', gecikme: 'Your jury will be a few minutes late; please wait at the door.',
     sinavda_b: 'You are in the exam', juriHocalari: 'Jury teachers',
     gec_b: 'You are late for the exam', gec_m: s => `If a jury becomes free before ${s} today, you may still be called. Keep following this screen on your phone. If no jury becomes free, you cannot take the exam today.`,
-    alinamadi_b: 'No jury was free today, so you could not take the exam', red_b: 'You are too late; you cannot take the exam today',
+    alinamadi_b: 'No jury was free today, so you could not take the exam', red_b: 'You scanned more than 5 minutes after your exam time, so you cannot take the speaking exam',
     gelmedi_b: 'The jury marked you as "absent"', gelmedi_m: 'Go immediately to the registration desk at the school entrance on the cafeteria side.',
     bitti_b: 'Your exam is complete', bitti_bekle: 'Your score will appear here when all exams at your level are finished and the administration publishes the scores.',
     not_b: 'Your speaking score', anasis: 'The official result will be announced on AnaSİS. Please check your score on AnaSİS.',
@@ -408,7 +408,7 @@ const DIL = {
     atandi_m: 'Ждите у аудитории; комиссия вас вызовет.', gecikme: 'Ваша комиссия задержится на несколько минут; подождите у двери.',
     sinavda_b: 'Вы на экзамене', juriHocalari: 'Преподаватели комиссии',
     gec_b: 'Вы опоздали на экзамен', gec_m: s => `Если сегодня до ${s} освободится комиссия, вас могут вызвать. Следите за этим экраном на телефоне. Если комиссия не освободится, сегодня вы не сможете сдать экзамен.`,
-    alinamadi_b: 'Сегодня не было свободной комиссии, поэтому вы не смогли сдать экзамен', red_b: 'Вы опоздали; сегодня вы не можете сдать экзамен',
+    alinamadi_b: 'Сегодня не было свободной комиссии, поэтому вы не смогли сдать экзамен', red_b: 'Вы отсканировали код более чем через 5 минут после своего времени, поэтому не можете сдать экзамен по говорению',
     gelmedi_b: 'Комиссия отметила вас как «не явился(-ась)»', gelmedi_m: 'Немедленно подойдите к столу регистрации у входа в здание со стороны столовой.',
     bitti_b: 'Ваш экзамен завершён', bitti_bekle: 'Ваша оценка появится здесь, когда все экзамены вашего уровня закончатся и администрация опубликует результаты.',
     not_b: 'Ваша оценка за говорение', anasis: 'Официальный результат будет объявлен в системе AnaSİS. Проверьте свою оценку в AnaSİS.',
@@ -446,7 +446,7 @@ const OTO = {
   tr: {
     baslik: 'Sistemin cevabı', anladim: 'Tamam, anladım', yineYaz: 'Sorunum çözülmedi, yönetime yaz',
     kod: c => c.g ? 'Girişin zaten yapıldı; artık kod gerekmiyor. Bu ekranı açık tut.'
-      : "Kod 30 saniyede bir değişir. TV'deki QR kodunu telefonunla yeniden okut (kod kendiliğinden dolar) ya da TV'de o an görünen 4 haneli kodu yaz. Numaranı da eksiksiz yazdığından emin ol.",
+      : "Kod 60 saniyede bir değişir. TV'deki QR kodunu telefonunla yeniden okut (kod kendiliğinden dolar) ya da TV'de o an görünen 4 haneli kodu yaz. Numaranı da eksiksiz yazdığından emin ol.",
     numara: c => c.g ? `Numaran listede ve girişin yapıldı: ${c.g.ad} · ${c.g.lv} · ${c.g.cls}.`
       : c.hata === 'liste' ? `Yazdığın numara${c.no ? ' (' + c.no + ')' : ''} bu sınavın listesinde yok. Numaranı rakam rakam kontrol et. Doğruysa kayıt masasına git; görevli kontrol edecek.`
       : "Önce numaranı ve TV'deki kodu yazıp giriş yap. Sistem 'listede yok' derse numaranı kontrol et; numaran doğruysa kayıt masasına git.",
@@ -469,7 +469,7 @@ const OTO = {
   en: {
     baslik: 'Automatic answer', anladim: 'OK, I understand', yineYaz: 'My problem is not solved – write to the administration',
     kod: c => c.g ? 'You are already checked in; you no longer need a code. Keep this screen open.'
-      : 'The code changes every 30 seconds. Scan the QR code on the TV again with your phone (the code fills in automatically) or type the 4-digit code shown on the TV right now. Also make sure your student number is complete.',
+      : 'The code changes every 60 seconds. Scan the QR code on the TV again with your phone (the code fills in automatically) or type the 4-digit code shown on the TV right now. Also make sure your student number is complete.',
     numara: c => c.g ? `Your number is on the list and you are checked in: ${c.g.ad} · ${c.g.lv} · ${c.g.cls}.`
       : c.hata === 'liste' ? `The number you entered${c.no ? ' (' + c.no + ')' : ''} is not on the list for this exam. Check it digit by digit. If it is correct, go to the registration desk.`
       : "First enter your number and the code on the TV and check in. If the system says 'not on the list', check your number; if it is correct, go to the registration desk.",
@@ -492,7 +492,7 @@ const OTO = {
   ru: {
     baslik: 'Автоматический ответ', anladim: 'Понятно', yineYaz: 'Проблема не решена – написать администрации',
     kod: c => c.g ? 'Вы уже зарегистрировались, код больше не нужен. Не закрывайте этот экран.'
-      : 'Код меняется каждые 30 секунд. Отсканируйте QR-код на телевизоре ещё раз (код заполнится автоматически) или введите 4-значный код, который сейчас на экране. Проверьте также, что номер студента введён полностью.',
+      : 'Код меняется каждые 60 секунд. Отсканируйте QR-код на телевизоре ещё раз (код заполнится автоматически) или введите 4-значный код, который сейчас на экране. Проверьте также, что номер студента введён полностью.',
     numara: c => c.g ? `Ваш номер есть в списке, вы зарегистрированы: ${c.g.ad} · ${c.g.lv} · ${c.g.cls}.`
       : c.hata === 'liste' ? `Введённого номера${c.no ? ' (' + c.no + ')' : ''} нет в списке этого экзамена. Проверьте каждую цифру. Если номер верный, подойдите к столу регистрации.`
       : 'Сначала введите номер и код с телевизора и зарегистрируйтесь. Если система ответит «нет в списке», проверьте номер; если он верный, подойдите к столу регистрации.',
