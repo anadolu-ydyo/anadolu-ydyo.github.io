@@ -307,7 +307,8 @@ const DIL = {
     e_kod: "Kod hatalı ya da süresi geçmiş. TV'deki QR kodunu yeniden okut ya da güncel kodu yaz.",
     e_liste: 'Bu numara sınav listesinde yok. Numaranı kontrol et ya da kayıt masasına git.', e_gunyok: 'Bugün speaking sınavı yok.',
     yanlisGun: (g, t, s) => `Senin sınavın: ${g}${t ? ' (' + t + ')' : ''}, saat ${s}. Bugün sınavın yok.`,
-    grup: 'grup', bekle_b: 'Eşleştirme bekleniyor', bekle_m: s => `Grup saatin: ${s}. Eşin okuttuğunda jürin ve dersliğin burada görünecek.`,
+    grup: 'grup', bekle_b: 'Eşleştirme bekleniyor', bekle_m: s => `Sınav saatin: ${s}. Eşin belli olunca burada görünecek. Ekranını açık tut.`,
+    esbelli_b: 'Eşin belli oldu', esbelli_m: s => `Jüri numaran ve dersliğin sınavına 5 dakika kala (saat ${s}) burada görünecek. Ekranını açık tut.`,
     erken: 'Erken girmeye hazırım', erkenKaldir: '"Erken girmeye hazırım" işaretini kaldır', erkenNot: 'Erken girmeye hazırsan, daha önceki bir grupta yer açılırsa davet edilirsin. Davet gelince telefonun titrer; onaylarsan o saatte girersin.',
     davet_b: s => `${s}'te sınava girebilirsin!`, davet_m: son => `Girmek istiyorsan ${son}'e kadar onayla. Onaylamazsan kendi saatinde girersin.`, davetOnay: 'Onaylıyorum, geliyorum',
     kayip: (s, k) => `${s}'te girme hakkını kaybettin; şu an senin için ilan edilen kendi saatin (${k}) geçerli.`,
@@ -352,7 +353,8 @@ const DIL = {
     e_kod: 'The code is wrong or has expired. Scan the QR code on the TV again or type the current code.',
     e_liste: 'This number is not on the exam list. Check your number or go to the registration desk.', e_gunyok: 'There is no speaking exam today.',
     yanlisGun: (g, t, s) => `Your exam is on: ${g}${t ? ' (' + t + ')' : ''}, at ${s}. You do not have an exam today.`,
-    grup: 'group', bekle_b: 'Waiting for a partner', bekle_m: s => `Your group time: ${s}. When your partner checks in, your jury and classroom will appear here.`,
+    grup: 'group', bekle_b: 'Waiting for a partner', bekle_m: s => `Your exam time: ${s}. Your partner will appear here once matched. Keep this screen open.`,
+    esbelli_b: 'Your partner is set', esbelli_m: s => `Your jury number and classroom will appear here 5 minutes before your exam (at ${s}). Keep this screen open.`,
     erken: "I'm ready to go in early", erkenKaldir: 'Cancel "ready to go in early"', erkenNot: 'If you are ready early, you will be invited when a place opens in an earlier group. Your phone will vibrate; if you confirm, you take the exam at that time.',
     davet_b: s => `You can take the exam at ${s}!`, davet_m: son => `If you want to go in, confirm before ${son}. If you do not confirm, you take the exam at your own time.`, davetOnay: 'I confirm, I am coming',
     kayip: (s, k) => `You lost your place at ${s}; your own announced time (${k}) is still valid.`,
@@ -397,7 +399,8 @@ const DIL = {
     e_kod: 'Код неверный или устарел. Снова отсканируйте QR-код на телевизоре или введите текущий код.',
     e_liste: 'Этого номера нет в списке экзамена. Проверьте номер или подойдите к столу регистрации.', e_gunyok: 'Сегодня экзамена по говорению нет.',
     yanlisGun: (g, t, s) => `Ваш экзамен: ${g}${t ? ' (' + t + ')' : ''}, в ${s}. Сегодня у вас нет экзамена.`,
-    grup: 'группа', bekle_b: 'Ожидание партнёра', bekle_m: s => `Время вашей группы: ${s}. Когда ваш партнёр зарегистрируется, здесь появятся ваша комиссия и аудитория.`,
+    grup: 'группа', bekle_b: 'Ожидание партнёра', bekle_m: s => `Время вашего экзамена: ${s}. Ваш партнёр появится здесь, когда будет определён. Не закрывайте этот экран.`,
+    esbelli_b: 'Ваш партнёр определён', esbelli_m: s => `Номер комиссии и аудитория появятся здесь за 5 минут до экзамена (в ${s}). Не закрывайте этот экран.`,
     erken: 'Я готов(а) войти раньше', erkenKaldir: 'Отменить «готов(а) войти раньше»', erkenNot: 'Если вы готовы раньше, вас пригласят, когда в одной из более ранних групп освободится место. Телефон завибрирует; если вы подтвердите, вы сдаёте экзамен в это время.',
     davet_b: s => `Вы можете сдать экзамен в ${s}!`, davet_m: son => `Если хотите, подтвердите до ${son}. Если не подтвердите, вы сдаёте экзамен в своё время.`, davetOnay: 'Подтверждаю, иду',
     kayip: (s, k) => `Вы потеряли место в ${s}; ваше объявленное время (${k}) остаётся в силе.`,
@@ -629,6 +632,7 @@ function durum(g) {
       if (g.erkenSon != null) ek = `<button class="btn big ${g.erken ? 'ghost' : ''}" data-act="erken">${esc(g.erken ? t.erkenKaldir : t.erken)}</button><p class="small muted">${esc(t.erkenNot)}</p>`;
       break;
     case 'trans': ana = kutu('warn', t.trans_b, p(t.trans_m(g.saat2))); break;
+    case 'esbelli': ana = kutu('acc', t.esbelli_b, `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.esYok)}</dd></dl>${p(t.esbelli_m(g.acilis))}`); break;
     case 'atandi':
       ana = kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room), `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : (g.yedekTek ? t.tek : t.esYok))}</dd></dl>${p(t.atandi_m)}`);
       if (g.gecikme) ek = `<div class="note n-warn">${esc(t.gecikme)}</div>`;
