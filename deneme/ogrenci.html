@@ -307,6 +307,11 @@ const DIL = {
     e_kod: "Kod hatalı ya da süresi geçmiş. TV'deki QR kodunu yeniden okut ya da güncel kodu yaz.",
     e_liste: 'Bu numara sınav listesinde yok. Numaranı kontrol et ya da kayıt masasına git.', e_gunyok: 'Bugün speaking sınavı yok.',
     yanlisGun: (g, t, s) => `Senin sınavın: ${g}${t ? ' (' + t + ')' : ''}, saat ${s}. Bugün sınavın yok.`,
+    gecmisGun: (g, t, s, kagit) => `Senin sınavın ${g}${t ? ' (' + t + ')' : ''}, saat ${s} ve sona erdi. ` + (kagit ? "Notun AnaSİS'te duyurulacaktır." : "Notun bu cihazda görünmüyor; notunu AnaSİS'ten öğrenebilirsin."),
+    gecmis_b: (g, t, s) => `Senin sınavın ${g}${t ? ' (' + t + ')' : ''}, saat ${s} ve sona erdi.`,
+    girmedi_b: (g, s) => `Senin sınavın ${g}, saat ${s}; sınava girmedin.`,
+    kagit_b: 'Sınavın sona erdi', kagit_m: "Notun AnaSİS'te duyurulacaktır.",
+    anketOnce: 'Notlar yayımlandı. Notunu görmeden önce anketi doldurman gerekiyor.',
     grup: 'grup', bekle_b: 'Eşleştirme bekleniyor', bekle_m: s => `Sınav saatin: ${s}. Eşin belli olunca burada görünecek. Ekranını açık tut.`,
     esbelli_b: 'Eşin belli oldu', esbelli_m: s => `Jüri numaran ve dersliğin sınavına 5 dakika kala (saat ${s}) burada görünecek. Ekranını açık tut.`,
     erken: 'Erken girmeye hazırım', erkenKaldir: '"Erken girmeye hazırım" işaretini kaldır', erkenNot: 'Erken girmeye hazırsan, daha önceki bir grupta yer açılırsa davet edilirsin. Davet gelince telefonun titrer; onaylarsan o saatte girersin.',
@@ -322,7 +327,7 @@ const DIL = {
     gec_b: 'Sınava geç kaldın', gec_m: s => `Bugün saat ${s}'e kadar eğer boş jüri olursa sınava çağırılabilirsin. Bu nedenle cep telefonunda sınav ekranını takip et. Ancak boş jüri olmazsa sınava alınamazsın.`,
     alinamadi_b: 'Bugün boş jüri olmadığı için sınava alınamadın', red_b: 'Sınav saatinden 5 dakikadan fazla geç kaldığın için konuşma sınavına giremezsin',
     gelmedi_b: 'Jüri seni "Gelmedi" olarak işaretledi', gelmedi_m: 'Hemen kantin tarafındaki okul girişinin oradaki kayıt masasına git.',
-    bitti_b: 'Sınavın tamamlandı', bitti_bekle: 'Notun, düzeyindeki bütün sınavlar bitip yönetim yayımlayınca burada görünecek.',
+    bitti_b: 'Sınavın tamamlandı', bitti_bekle: 'Notun gün içinde bu sayfada yayımlanacak. Notunu görmek için bu sayfayı aynı telefonda ve aynı tarayıcıda tekrar aç. Sayfayı yer imlerine ekleyebilirsin.',
     not_b: 'Speaking notun', anasis: "Kesin sonuç AnaSİS'te duyurulacaktır. Notunuzu AnaSİS'ten kontrol edin.",
     yenilenir: 'Bu ekran kendiliğinden yenilenir; kapatma.', baskaOgr: 'Bu telefonda başka öğrenci',
     sorunBtn: 'Sorun yaşıyorum / Yardım istiyorum', sorunBaslik: 'Sorununu seç', aciklama: 'Kısa açıklama (isteğe bağlı)', aciklamaZ: 'Kısa açıklama (zorunlu)',
@@ -353,6 +358,11 @@ const DIL = {
     e_kod: 'The code is wrong or has expired. Scan the QR code on the TV again or type the current code.',
     e_liste: 'This number is not on the exam list. Check your number or go to the registration desk.', e_gunyok: 'There is no speaking exam today.',
     yanlisGun: (g, t, s) => `Your exam is on: ${g}${t ? ' (' + t + ')' : ''}, at ${s}. You do not have an exam today.`,
+    gecmisGun: (g, t, s, kagit) => `Your exam was on ${g}${t ? ' (' + t + ')' : ''} at ${s} and it is over. ` + (kagit ? 'Your score will be announced on AnaSİS.' : 'Your score is not shown on this device; you can see it on AnaSİS.'),
+    gecmis_b: (g, t, s) => `Your exam was on ${g}${t ? ' (' + t + ')' : ''} at ${s} and it is over.`,
+    girmedi_b: (g, s) => `Your exam was on ${g} at ${s}; you did not take the exam.`,
+    kagit_b: 'Your exam is over', kagit_m: 'Your score will be announced on AnaSİS.',
+    anketOnce: 'Scores have been published. You need to complete the survey before you can see your score.',
     grup: 'group', bekle_b: 'Waiting for a partner', bekle_m: s => `Your exam time: ${s}. Your partner will appear here once matched. Keep this screen open.`,
     esbelli_b: 'Your partner is set', esbelli_m: s => `Your jury number and classroom will appear here 5 minutes before your exam (at ${s}). Keep this screen open.`,
     erken: "I'm ready to go in early", erkenKaldir: 'Cancel "ready to go in early"', erkenNot: 'If you are ready early, you will be invited when a place opens in an earlier group. Your phone will vibrate; if you confirm, you take the exam at that time.',
@@ -368,7 +378,7 @@ const DIL = {
     gec_b: 'You are late for the exam', gec_m: s => `If a jury becomes free before ${s} today, you may still be called. Keep following this screen on your phone. If no jury becomes free, you cannot take the exam today.`,
     alinamadi_b: 'No jury was free today, so you could not take the exam', red_b: 'You scanned more than 5 minutes after your exam time, so you cannot take the speaking exam',
     gelmedi_b: 'The jury marked you as "absent"', gelmedi_m: 'Go immediately to the registration desk at the school entrance on the cafeteria side.',
-    bitti_b: 'Your exam is complete', bitti_bekle: 'Your score will appear here when all exams at your level are finished and the administration publishes the scores.',
+    bitti_b: 'Your exam is complete', bitti_bekle: 'Your score will be published on this page later today. To see it, open this page again on the same phone and in the same browser. You can bookmark this page.',
     not_b: 'Your speaking score', anasis: 'The official result will be announced on AnaSİS. Please check your score on AnaSİS.',
     yenilenir: 'This screen refreshes automatically; do not close it.', baskaOgr: 'Another student on this phone',
     sorunBtn: 'I have a problem / I need help', sorunBaslik: 'Choose your problem', aciklama: 'Short description (optional)', aciklamaZ: 'Short description (required)',
@@ -399,6 +409,11 @@ const DIL = {
     e_kod: 'Код неверный или устарел. Снова отсканируйте QR-код на телевизоре или введите текущий код.',
     e_liste: 'Этого номера нет в списке экзамена. Проверьте номер или подойдите к столу регистрации.', e_gunyok: 'Сегодня экзамена по говорению нет.',
     yanlisGun: (g, t, s) => `Ваш экзамен: ${g}${t ? ' (' + t + ')' : ''}, в ${s}. Сегодня у вас нет экзамена.`,
+    gecmisGun: (g, t, s, kagit) => `Ваш экзамен был: ${g}${t ? ' (' + t + ')' : ''}, в ${s}, и он завершён. ` + (kagit ? 'Ваша оценка будет объявлена в AnaSİS.' : 'Ваша оценка не отображается на этом устройстве; её можно узнать в AnaSİS.'),
+    gecmis_b: (g, t, s) => `Ваш экзамен был: ${g}${t ? ' (' + t + ')' : ''}, в ${s}, и он завершён.`,
+    girmedi_b: (g, s) => `Ваш экзамен был: ${g}, в ${s}; вы не сдавали экзамен.`,
+    kagit_b: 'Ваш экзамен завершён', kagit_m: 'Ваша оценка будет объявлена в AnaSİS.',
+    anketOnce: 'Оценки опубликованы. Чтобы увидеть свою оценку, сначала заполните анкету.',
     grup: 'группа', bekle_b: 'Ожидание партнёра', bekle_m: s => `Время вашего экзамена: ${s}. Ваш партнёр появится здесь, когда будет определён. Не закрывайте этот экран.`,
     esbelli_b: 'Ваш партнёр определён', esbelli_m: s => `Номер комиссии и аудитория появятся здесь за 5 минут до экзамена (в ${s}). Не закрывайте этот экран.`,
     erken: 'Я готов(а) войти раньше', erkenKaldir: 'Отменить «готов(а) войти раньше»', erkenNot: 'Если вы готовы раньше, вас пригласят, когда в одной из более ранних групп освободится место. Телефон завибрирует; если вы подтвердите, вы сдаёте экзамен в это время.',
@@ -414,7 +429,7 @@ const DIL = {
     gec_b: 'Вы опоздали на экзамен', gec_m: s => `Если сегодня до ${s} освободится комиссия, вас могут вызвать. Следите за этим экраном на телефоне. Если комиссия не освободится, сегодня вы не сможете сдать экзамен.`,
     alinamadi_b: 'Сегодня не было свободной комиссии, поэтому вы не смогли сдать экзамен', red_b: 'Вы отсканировали код более чем через 5 минут после своего времени, поэтому не можете сдать экзамен по говорению',
     gelmedi_b: 'Комиссия отметила вас как «не явился(-ась)»', gelmedi_m: 'Немедленно подойдите к столу регистрации у входа в здание со стороны столовой.',
-    bitti_b: 'Ваш экзамен завершён', bitti_bekle: 'Ваша оценка появится здесь, когда все экзамены вашего уровня закончатся и администрация опубликует результаты.',
+    bitti_b: 'Ваш экзамен завершён', bitti_bekle: 'Ваша оценка будет опубликована на этой странице сегодня. Чтобы её увидеть, снова откройте эту страницу на том же телефоне и в том же браузере. Можно добавить страницу в закладки.',
     not_b: 'Ваша оценка за говорение', anasis: 'Официальный результат будет объявлен в системе AnaSİS. Проверьте свою оценку в AnaSİS.',
     yenilenir: 'Этот экран обновляется автоматически; не закрывайте его.', baskaOgr: 'Другой студент на этом телефоне',
     sorunBtn: 'У меня проблема / Мне нужна помощь', sorunBaslik: 'Выберите проблему', aciklama: 'Краткое описание (необязательно)', aciklamaZ: 'Краткое описание (обязательно)',
@@ -646,8 +661,11 @@ function durum(g) {
     case 'alinamadi': ana = kutu('bad', t.alinamadi_b); break;
     case 'red': ana = kutu('bad', t.red_b); break;
     case 'gelmedi': alarmIste(g.alarm || 'gelmedi'); ana = kutu('bad', t.gelmedi_b, `<p><b>${esc(t.gelmedi_m)}</b></p>`); break;
+    case 'girmedi': ana = kutu('bad', t.girmedi_b(g.gecmis.gun, (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat)); break;
+    case 'kagitBitti': ana = kutu('ok', g.gecmis ? t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat) : t.bitti_b, p(t.kagit_m)); break;
     case 'bitti':
-      if (g.anket) return bas(g) + ust + vAnket() + alt(g);
+      if (g.gecmis) ust += `<div class="note n-acc">${esc(t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat))}</div>`;
+      if (g.anket) return bas(g) + ust + `<div class="note n-warn"><b>${esc(t.anketOnce)}</b></div>` + vAnket() + alt(g);
       if (!g.yayin) ana = kutu('ok', t.bitti_b, p(t.bitti_bekle));
       else ana = kutu('ok', t.not_b, `<div style="font-size:44px;font-weight:700;line-height:1.1;margin:6px 0">${esc(g.not.fin)} / ${esc(g.not.max)}</div><div class="big">${esc(g.not.r100)} / 100</div><p>${esc(t.anasis)}</p>`);
       break;
@@ -698,7 +716,7 @@ document.addEventListener('submit', async e => {
     if (f === 'giris') {
       mesaj = ''; yanlis = '';
       sonNo = $('#no').value.replace(/\D/g, ''); const r = await run('apiOgrenciGiris', $('#no').value, $('#kod').value);
-      sonHata = r.errKod || (r.err ? 'diger' : ''); if (r.err) mesaj = errMetin(r); else if (r.wrong) yanlis = t.yanlisGun(r.wrongGun, r.wrongTarih, r.wrongSaat);
+      sonHata = r.errKod || (r.err ? 'diger' : ''); if (r.err) mesaj = errMetin(r); else if (r.wrong) yanlis = r.wrongGecmis ? t.gecmisGun(r.wrongGun, '', dil === 'tr' || !dil ? r.wrongSaatYdi : r.wrongSaat, r.wrongKagit) : t.yanlisGun(r.wrongGun, '', r.wrongSaat);
       else { oturum = { no: r.no, anahtar: r.anahtar }; store.set('ogr', JSON.stringify(oturum)); sonG = r.g; }
     } else if (f === 'sorun') {
       sorunMesaj = '';

@@ -209,7 +209,7 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <div class="note n-bad" id="hata" hidden></div>
   <div class="res r-hl tvduyuru" id="duyuru" hidden><div id="duyuruTr"></div><div class="en" id="duyuruEn" lang="en"></div></div>
   <main id="app" class="tv">
-    <div class="panel qrbox"><h2>İngilizce Speaking Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p><p class="muted en" lang="en">Scan the QR code and enter your student number. If it does not open, use the code below.</p>
+    <div class="panel qrbox"><h2>İngilizce Speaking Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p><p class="muted en" lang="en">Scan the QR code and enter your student number. If it does not open, use the code below.</p><p class="muted"><b>QR kodu telefonunun kamerasıyla okut; gizli sekme kullanma.</b> Notunu daha sonra aynı telefonda ve aynı tarayıcıda göreceksin.</p><p class="muted en" lang="en">Scan with your phone camera; do not use a private tab. You will see your score later on the same phone and browser.</p>
       <div id="qr"></div><div class="code" id="kod">----</div><div class="bar"><i id="bar" style="width:100%"></i></div>
       <p class="small muted">Kod 60 saniyede bir değişir. Telefonunda sorun yaşayan öğrenciler kantin tarafındaki kayıt masasına başvursun.</p></div>
     <div class="stack"><div class="note n-acc" id="simdi">—</div><div id="tablolar"></div></div>
@@ -322,7 +322,9 @@ let qr = null, sonUrl = '', bitis = 0;
 function ciz(v) {
   $('#kod').textContent = v.kod; $('#simdi').textContent = (v.denemeSaat ? 'DENEME SAATİ ' + v.denemeSaat + ' · ' : '') + (v.gun ? v.gun + ' · ' : '') + v.simdi;
   $('#tablolar').innerHTML = (v.tablolar || []).map(tablo).join('');
-  if (v.url !== sonUrl && typeof QRCode === 'function') { sonUrl = v.url; $('#qr').innerHTML = ''; qr = new QRCode($('#qr'), { text: v.url, width: 340, height: 340, correctLevel: QRCode.CorrectLevel.M }); }
+  /* GitHub Pages'te açılan TV, QR'ı kendi klasöründeki öğrenci sayfasına verir (script.google.com çok hesaplı telefonlarda açılmıyor – 6.11.2026 okul denemesi) */
+  const qUrl = /\.github\.io$/.test(location.hostname) && v.kod ? location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + '?v=ogrenci&c=' + v.kod : v.url;
+  if (qUrl !== sonUrl && typeof QRCode === 'function') { sonUrl = qUrl; $('#qr').innerHTML = ''; qr = new QRCode($('#qr'), { text: qUrl, width: 340, height: 340, correctLevel: QRCode.CorrectLevel.M }); }
   bitis = Date.now() + v.kalan * 1000;
   const d = v.duyuru; $('#duyuru').hidden = !d; if (d) { $('#duyuruTr').textContent = d.metin; $('#duyuruEn').textContent = d.en || ''; }
 }

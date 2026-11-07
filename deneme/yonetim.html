@@ -312,7 +312,7 @@ function vCanli() {
       <span class="pill p-acc">Gün ${V.deneme.gun} · hız ×${V.deneme.hiz == null ? 1 : V.deneme.hiz}</span>
       ${[0, 1, 2, 5].map(h => `<button class="btn sm ${V.deneme.hiz === h ? '' : 'ghost'}" data-act="hiz" data-v="${h}">${h === 0 ? 'Durdur' : '×' + h}</button>`).join('')}
       <input id="dsaat" placeholder="12:50" size="5" style="width:70px" value="${esc(dsv)}"><button class="btn sm ghost" data-act="saatAyarla">Saate atla</button>
-      <button class="btn sm ghost" data-act="gun" data-v="${V.deneme.gun === 1 ? 2 : 1}">Gün ${V.deneme.gun === 1 ? 2 : 1}'e geç</button></div>` : '';
+      ${(V.deneme.gunler || [1, 2]).filter(g => g !== V.deneme.gun).map(g => `<button class="btn sm ghost" data-act="gun" data-v="${g}">Gün ${g}'e geç</button>`).join('')}</div>` : '';
   const DT = V.dt ? (() => { const cols = V.dt.duzeyler.concat(['*']);
     const th = `<tr><th></th>${cols.map(c => `<th>${c === '*' ? 'Toplam' : esc(c) + ' düzeyi'}</th>`).join('')}</tr>`;
     const tr = V.dt.satirlar.map((r, i) => `<tr class="${r.kritik ? 'kritik' : ''}"><th>${esc(r.ad)}</th>${r.hucre.map((h, j) => { const sec = dzSec === i + '|' + j;
@@ -328,6 +328,7 @@ function vCanli() {
     <div class="panel"><h3>Jüri ve slot tablosu · ${esc(V.gun)} · ${esc(V.saat)}</h3><div class="scroll"><table class="board">${head}${rows}</table></div>
     <p class="small muted" style="margin-top:6px">Mavi: sınavda/sırada · yeşil: SINAV BİTTİ · kırmızı: gelmedi · kesikli: aktarıldı ya da jüri kapandı.</p></div>
     <div class="panel lists">${L('Eş bekleyen', V.bekleyen)}${L('Aktarılan', V.aktarilan)}${L('Geç kalan – bekliyor (en az geç kalan üstte)', V.gec)}${L('Geç kaldı – sınava alınamadı', V.alinamadi)}</div>
+    ${(V.unutulan || []).length ? `<div class="panel" style="border:2px solid var(--bad,#c62828)"><h3>Unutulan işlemler</h3><ul>${V.unutulan.map(u => `<li><b>${esc(u.ad)}</b> – ${esc(u.neden)}<div class="row" style="margin:4px 0 8px"><button class="btn sm" data-act="hatirlat" data-jid="${esc(u.jid)}" data-neden="${esc(u.neden)}">Jüriye hatırlat</button>${u.h.map(h => `<button class="btn sm ghost" data-act="yerine" data-id="${esc(h.id)}">${esc(h.ad)} yerine işlem</button>`).join('')}</div></li>`).join('')}</ul></div>` : ''}
     ${V.uyarilar.length ? `<div class="panel"><h3>Not uyarıları</h3><ul>${V.uyarilar.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}</div>`;
 }
 function vUyari() {
@@ -453,6 +454,7 @@ document.addEventListener('click', async e => {
     if (d.act === 'aJmesaj') { if (!arac.jmetin.trim()) mesaj = 'Mesajı yazın.'; else { const r = await yi('jmesaj', { jids: arac.jsec, hepsi: arac.jhepsi, metin: arac.jmetin }); if (/gönderildi/.test(r.mesaj || '')) arac.jmetin = ''; } }
     if (d.act === 'aTv') { const r = await yi('tv', { metin: arac.tvmetin, dk: Number(arac.tvdk) || 10 }); if (/görünecek/.test(r.mesaj || '')) arac.tvmetin = ''; }
     if (d.act === 'aTvKaldir') await yi('tvkaldir', {});
+    if (d.act === 'hatirlat') await yi('jmesaj', { jids: [d.jid], hepsi: false, metin: 'Hatırlatma: ' + d.neden + '. Lütfen jüri ekranınızdan ilgili düğmeye basın (Geldi / Gelmedi / SINAV BİTTİ).' });
     if (d.act === 'aOmesaj') { if (!arac.ono || !arac.ometin.trim()) mesaj = 'Öğrenci no ve mesajı yazın.'; else { const r = await yi('omesaj', { no: arac.ono, metin: arac.ometin }); if (/gönderildi/.test(r.mesaj || '')) { arac.ometin = ''; } } }
     if (d.act === 'cozuldu') { const r = await run('apiYonetimIslem', ot, 'cozuldu', { id: d.id }); if (r.v) V = r.v; mesaj = ''; }
     if (d.act === 'yayinla') { if (!d.zorla || confirm('Düzey henüz "hazır" değil (süren sınav ya da kesinleşmemiş not olabilir). Yine de yayımlansın mı?')) { const r = await run('apiYonetimIslem', ot, 'yayinla', { key: d.key, zorla: !!d.zorla }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
