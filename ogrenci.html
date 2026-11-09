@@ -320,6 +320,9 @@ const DIL = {
     donus: (s, k) => `${s} slotunda eşin olmadığı için kendi saatine (${k}) döndün. Telefon ekranını takip et.`,
     cagri: 'Jürin seni bekliyor!', birlesme: 'Eşin değişti; jürin ve dersliğin yukarıda. Hemen o dersliğe git.',
     ymsj_b: 'Yönetimden mesaj', ymsjOnay: 'Tamam, bana denileni yapıyorum', ymsjOk: 'Onayladın – teşekkürler',
+    esBekle_b: 'Eşin bekleniyor', esBekle_m: (s, a, se, ae) => `Sınav saatin: ${s}. Eşin QR kodunu okuttuğunda adı burada görünecek. Jüri ve derslik saat ${a}${ae} burada görünecek. Ekranını açık tut.`,
+    trans5_b: 'Eşin gelmedi', trans5_m: (s, a, se, ae) => `Saat ${s} oturumunda başka bir çiftle sınava gireceksin; ${s}${se} hazır ol. Yeni eşlerin QR okuttuğunda adları burada görünecek. Jüri ve derslik saat ${a}${ae} görünecek.`,
+    esQr: 'Henüz QR okutmadı', anketKagit: 'Lütfen kısa anketi doldur.',
     trans_b: 'Eşleştirme yapılamadı', trans_m: s => `Bir sonraki slotta (${s}) gireceksin; o slotta eşleştirmede ilk sıradasın. Telefon ekranını takip et; eşin belirlenince jürin burada görünecek.`,
     juri: (lv, n, r) => `${lv} · Jüri ${n} · Derslik ${r}`, saat: 'Saat', es: 'Eşin', tek: 'Tek başına gireceksin', esYok: 'Henüz belli değil; sistem eşleştirecek', ekranAcik: 'Telefonunun ekranını kapatma: sistem seni bu ekrandan çağıracak.',
     atandi_m: 'Dersliğin önünde bekle; jüri seni çağıracak.', gecikme: 'Jüriniz birkaç dakika gecikecek, kapıda bekleyin.',
@@ -371,6 +374,9 @@ const DIL = {
     donus: (s, k) => `You had no partner in the ${s} slot, so you are back to your own time (${k}). Keep watching your phone.`,
     cagri: 'Your jury is waiting for you!', birlesme: 'Your partner has changed; your jury and room are shown above. Go to that room now.',
     ymsj_b: 'Message from the administration', ymsjOnay: 'OK, I am doing what I was told', ymsjOk: 'Confirmed – thank you',
+    esBekle_b: 'Waiting for your partner', esBekle_m: (s, a) => `Your exam time: ${s}. Your partner's name will appear here once they scan the QR code. Your jury and room will appear here at ${a}. Keep this screen open.`,
+    trans5_b: 'Your partner did not come', trans5_m: (s, a) => `You will take the exam at ${s} with another pair; be ready at ${s}. Your new partners' names will appear here when they scan the QR code. Your jury and room will appear at ${a}.`,
+    esQr: 'Has not scanned yet', anketKagit: 'Please fill in the short survey.',
     trans_b: 'No partner could be matched', trans_m: s => `You will take the exam in the next slot (${s}); you are first in line for matching there. Keep watching your phone; your jury will appear here once your partner is set.`,
     juri: (lv, n, r) => `${lv} · Jury ${n} · Room ${r}`, saat: 'Time', es: 'Your partner', tek: 'You will go in alone', esYok: 'Not yet known; the system will match you', ekranAcik: 'Keep your phone screen on: the system will call you on this screen.',
     atandi_m: 'Wait in front of the classroom; the jury will call you.', gecikme: 'Your jury will be a few minutes late; please wait at the door.',
@@ -422,6 +428,9 @@ const DIL = {
     donus: (s, k) => `В слоте ${s} у вас не было партнёра, поэтому вы возвращены к своему времени (${k}). Следите за телефоном.`,
     cagri: 'Комиссия ждёт вас!', birlesme: 'Ваш партнёр изменился; комиссия и аудитория указаны выше. Сразу идите в эту аудиторию.',
     ymsj_b: 'Сообщение от администрации', ymsjOnay: 'Хорошо, я делаю то, что мне сказали', ymsjOk: 'Подтверждено – спасибо',
+    esBekle_b: 'Ожидание партнёра', esBekle_m: (s, a) => `Время вашего экзамена: ${s}. Имя партнёра появится здесь, когда он(а) отсканирует QR-код. Комиссия и аудитория появятся здесь в ${a}. Не закрывайте этот экран.`,
+    trans5_b: 'Ваш партнёр не пришёл', trans5_m: (s, a) => `Вы будете сдавать экзамен в ${s} с другой парой; будьте готовы к ${s}. Имена новых партнёров появятся здесь, когда они отсканируют QR-код. Комиссия и аудитория появятся в ${a}.`,
+    esQr: 'Ещё не отсканировал(а)', anketKagit: 'Пожалуйста, заполните короткую анкету.',
     trans_b: 'Не удалось подобрать партнёра', trans_m: s => `Вы будете сдавать экзамен в следующем слоте (${s}); там вы первым(-ой) в очереди на подбор партнёра. Следите за телефоном; когда партнёр будет определён, здесь появится ваша комиссия.`,
     juri: (lv, n, r) => `${lv} · Комиссия ${n} · Аудитория ${r}`, saat: 'Время', es: 'Ваш партнёр', tek: 'Вы будете сдавать один (одна)', esYok: 'Пока не определён; система подберёт партнёра', ekranAcik: 'Не выключайте экран телефона: система вызовет вас через этот экран.',
     atandi_m: 'Ждите у аудитории; комиссия вас вызовет.', gecikme: 'Ваша комиссия задержится на несколько минут; подождите у двери.',
@@ -647,9 +656,11 @@ function durum(g) {
       if (g.erkenSon != null) ek = `<button class="btn big ${g.erken ? 'ghost' : ''}" data-act="erken">${esc(g.erken ? t.erkenKaldir : t.erken)}</button><p class="small muted">${esc(t.erkenNot)}</p>`;
       break;
     case 'trans': ana = kutu('warn', t.trans_b, p(t.trans_m(g.saat2))); break;
-    case 'esbelli': ana = kutu('acc', t.esbelli_b, `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.esYok)}</dd></dl>${p(t.esbelli_m(g.acilis))}`); break;
+    case 'esBekle': ana = kutu('acc', t.esBekle_b, p(t.esBekle_m(g.saat2, g.acilis, g.saatEk, g.acilisEk))); break;
+    case 'trans5': ana = kutu('warn', t.trans5_b, `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : t.esQr)}</dd></dl>${p(t.trans5_m(g.saat2, g.acilis, g.saatEk, g.acilisEk))}`); break;
+    case 'esbelli': ana = kutu('acc', t.esbelli_b, `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : (g.sabit ? t.esQr : t.esYok))}</dd></dl>${p(t.esbelli_m(g.acilis))}`); break;
     case 'atandi':
-      ana = kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room), `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : (g.yedekTek ? t.tek : t.esYok))}</dd></dl>${p(t.atandi_m)}`);
+      ana = kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room), `<dl class="kv"><dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd><dt>${esc(t.es)}</dt><dd>${esc(g.esler.length ? g.esler.join(', ') : (g.sabit ? t.esQr : g.yedekTek ? t.tek : t.esYok))}</dd></dl>${p(t.atandi_m)}`);
       if (g.gecikme) ek = `<div class="note n-warn">${esc(t.gecikme)}</div>`;
       if (g.cagri) { alarmIste('cagri:' + g.cagri.id); ust += `<div class="res r-bad"><div class="big" style="font-size:26px">${esc(t.cagri)}</div><p><b>${esc(t.juri(g.j.lv, g.j.no, g.j.room))}</b></p></div>`; }
       if (g.birlesme) ek += `<div class="note n-warn">${esc(t.birlesme)}</div>`;
@@ -662,7 +673,9 @@ function durum(g) {
     case 'red': ana = kutu('bad', t.red_b); break;
     case 'gelmedi': alarmIste(g.alarm || 'gelmedi'); ana = kutu('bad', t.gelmedi_b, `<p><b>${esc(t.gelmedi_m)}</b></p>`); break;
     case 'girmedi': ana = kutu('bad', t.girmedi_b(g.gecmis.gun, (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat)); break;
-    case 'kagitBitti': ana = kutu('ok', g.gecmis ? t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat) : t.bitti_b, p(t.kagit_m)); break;
+    case 'kagitBitti':
+      if (g.anket) return bas(g) + ust + `<div class="note n-ok"><b>${esc(t.bitti_b)}</b> ${esc(t.kagit_m)}</div><div class="note n-warn"><b>${esc(t.anketKagit)}</b></div>` + vAnket() + alt(g);
+      ana = kutu('ok', g.gecmis ? t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat) : t.bitti_b, p(t.kagit_m)); break;
     case 'bitti':
       if (g.gecmis) ust += `<div class="note n-acc">${esc(t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat))}</div>`;
       if (g.anket) return bas(g) + ust + `<div class="note n-warn"><b>${esc(t.anketOnce)}</b></div>` + vAnket() + alt(g);
