@@ -323,6 +323,22 @@ const DIL = {
     esBekle_b: 'Eşin bekleniyor', esBekle_m: (s, a, se, ae) => `Sınav saatin: ${s}. Eşin QR kodunu okuttuğunda adı burada görünecek. Jüri ve derslik saat ${a}${ae} burada görünecek. Ekranını açık tut.`,
     trans5_b: 'Eşin gelmedi', trans5_m: (s, a, se, ae) => `Saat ${s} oturumunda başka bir çiftle sınava gireceksin; ${s}${se} hazır ol. Yeni eşlerin QR okuttuğunda adları burada görünecek. Jüri ve derslik saat ${a}${ae} görünecek.`,
     esQr: 'Henüz QR okutmadı', anketKagit: 'Lütfen kısa anketi doldur.',
+    s_es: 'Eşin', s_es1: 'Birinci eşin', s_es2: 'İkinci eşin', s_es3: 'Üçüncü eşin', s_bekleniyor: 'bekleniyor', s_gelmedi: 'gelmedi',
+    s_akt: s => `${s} oturumundan aktarıldı`, s_bir: j => `${j} jürisinden alındı`,
+    s_kisi3: 'Sınava 3 kişi gireceksiniz.', s_kisi2: 'Sınava 2 kişi gireceksiniz.',
+    s_mola: (a, b, be) => `Jüriler ${a}–${b} arasında moladadır. Sınavların ${b}${be} başlayacak.`,
+    s_anketNot: 'Sınavından çıkınca bu sayfaya dön ve kısa anketi doldur.',
+    s_bekle_m: 'Eşin QR kodunu okuttuğunda adı burada görünecek.',
+    s_acilis: (a, ae) => `Jüri ve derslik saat ${a}${ae} burada ve TV'de görünecek; telefonunu ve TV'yi takip et.`,
+    s_trans_b: s => `Eşin gelmedi. Saat ${s} oturumunda başka bir çiftle 3 kişi gireceksin.`,
+    s_esYok_b: 'Eşin henüz QR okutmadı',
+    s_esYok_m: (l, le, n) => `Eşin ${l}${le} kadar gelmezse ${n} oturumunda başka bir çiftle sınava gireceksin.`,
+    s_esYok_son: (l, le) => `Eşin ${l}${le} kadar gelmezse seni başka öğrencilerle birleştireceğiz.`,
+    s_takip: "Telefonunu ve TV'yi takip etmeye devam et.",
+    s_birlesim: 'Eşin gelmedi; seni başka öğrencilerle birleştirdik.',
+    s_masa_b: 'Eşin gelmedi', s_masa_m: 'Lütfen hemen kayıt masasına gel.',
+    s_bittiNot: 'Sınavın bittiyse lütfen aşağıdaki kısa anketi doldur. Sınavın henüz başlamadıysa dersliğin önünde sıranı bekle; anketi sınavdan sonra doldurabilirsin.',
+    s_tesekkur: "Teşekkürler. Notun AnaSİS'te duyurulacaktır.", s_anketGonder: 'Anketi gönder',
     trans_b: 'Eşleştirme yapılamadı', trans_m: s => `Bir sonraki slotta (${s}) gireceksin; o slotta eşleştirmede ilk sıradasın. Telefon ekranını takip et; eşin belirlenince jürin burada görünecek.`,
     juri: (lv, n, r) => `${lv} · Jüri ${n} · Derslik ${r}`, saat: 'Saat', es: 'Eşin', tek: 'Tek başına gireceksin', esYok: 'Henüz belli değil; sistem eşleştirecek', ekranAcik: 'Telefonunun ekranını kapatma: sistem seni bu ekrandan çağıracak.',
     atandi_m: 'Dersliğin önünde bekle; jüri seni çağıracak.', gecikme: 'Jüriniz birkaç dakika gecikecek, kapıda bekleyin.',
@@ -377,6 +393,22 @@ const DIL = {
     esBekle_b: 'Waiting for your partner', esBekle_m: (s, a) => `Your exam time: ${s}. Your partner's name will appear here once they scan the QR code. Your jury and room will appear here at ${a}. Keep this screen open.`,
     trans5_b: 'Your partner did not come', trans5_m: (s, a) => `You will take the exam at ${s} with another pair; be ready at ${s}. Your new partners' names will appear here when they scan the QR code. Your jury and room will appear at ${a}.`,
     esQr: 'Has not scanned yet', anketKagit: 'Please fill in the short survey.',
+    s_es: 'Your partner', s_es1: 'First partner', s_es2: 'Second partner', s_es3: 'Third partner', s_bekleniyor: 'waiting', s_gelmedi: 'did not come',
+    s_akt: s => `moved from the ${s} session`, s_bir: j => `moved from ${j.replace('Jüri', 'Jury')}`,
+    s_kisi3: 'You will take the exam as a group of 3.', s_kisi2: 'You will take the exam as a pair.',
+    s_mola: (a, b) => `The juries are on break ${a}–${b}. Your exams start at ${b}.`,
+    s_anketNot: 'After your exam, come back to this page and fill in the short survey.',
+    s_bekle_m: "Your partner's name will appear here when they scan the QR code.",
+    s_acilis: a => `Your jury and room will appear here and on the TV at ${a}; keep watching your phone and the TV.`,
+    s_trans_b: s => `Your partner did not come. You will take the exam at ${s} with another pair, as a group of 3.`,
+    s_esYok_b: 'Your partner has not scanned yet',
+    s_esYok_m: (l, le, n) => `If your partner does not arrive by ${l}, you will take the exam in the ${n} session with another pair.`,
+    s_esYok_son: l => `If your partner does not arrive by ${l}, we will group you with other students.`,
+    s_takip: 'Keep watching your phone and the TV.',
+    s_birlesim: 'Your partner did not come; we have grouped you with other students.',
+    s_masa_b: 'Your partner did not come', s_masa_m: 'Please come to the registration desk now.',
+    s_bittiNot: 'If your exam is over, please fill in the short survey below. If your exam has not started yet, wait in front of your room; you can fill in the survey after your exam.',
+    s_tesekkur: 'Thank you. Your score will be announced on AnaSİS.', s_anketGonder: 'Submit the survey',
     trans_b: 'No partner could be matched', trans_m: s => `You will take the exam in the next slot (${s}); you are first in line for matching there. Keep watching your phone; your jury will appear here once your partner is set.`,
     juri: (lv, n, r) => `${lv} · Jury ${n} · Room ${r}`, saat: 'Time', es: 'Your partner', tek: 'You will go in alone', esYok: 'Not yet known; the system will match you', ekranAcik: 'Keep your phone screen on: the system will call you on this screen.',
     atandi_m: 'Wait in front of the classroom; the jury will call you.', gecikme: 'Your jury will be a few minutes late; please wait at the door.',
@@ -431,6 +463,22 @@ const DIL = {
     esBekle_b: 'Ожидание партнёра', esBekle_m: (s, a) => `Время вашего экзамена: ${s}. Имя партнёра появится здесь, когда он(а) отсканирует QR-код. Комиссия и аудитория появятся здесь в ${a}. Не закрывайте этот экран.`,
     trans5_b: 'Ваш партнёр не пришёл', trans5_m: (s, a) => `Вы будете сдавать экзамен в ${s} с другой парой; будьте готовы к ${s}. Имена новых партнёров появятся здесь, когда они отсканируют QR-код. Комиссия и аудитория появятся в ${a}.`,
     esQr: 'Ещё не отсканировал(а)', anketKagit: 'Пожалуйста, заполните короткую анкету.',
+    s_es: 'Ваш партнёр', s_es1: 'Первый партнёр', s_es2: 'Второй партнёр', s_es3: 'Третий партнёр', s_bekleniyor: 'ожидается', s_gelmedi: 'не пришёл(-ла)',
+    s_akt: s => `переведён(а) из сессии ${s}`, s_bir: j => `переведён(а) из ${j.replace('Jüri', 'комиссии')}`,
+    s_kisi3: 'Вы будете сдавать экзамен втроём.', s_kisi2: 'Вы будете сдавать экзамен вдвоём.',
+    s_mola: (a, b) => `У комиссий перерыв ${a}–${b}. Ваши экзамены начнутся в ${b}.`,
+    s_anketNot: 'После экзамена вернитесь на эту страницу и заполните короткую анкету.',
+    s_bekle_m: 'Имя партнёра появится здесь, когда он(а) отсканирует QR-код.',
+    s_acilis: a => `Комиссия и аудитория появятся здесь и на экране в ${a}; следите за телефоном и экраном.`,
+    s_trans_b: s => `Ваш партнёр не пришёл. Вы будете сдавать экзамен в ${s} с другой парой, втроём.`,
+    s_esYok_b: 'Ваш партнёр ещё не отсканировал QR-код',
+    s_esYok_m: (l, le, n) => `Если партнёр не придёт до ${l}, вы будете сдавать экзамен в сессии ${n} с другой парой.`,
+    s_esYok_son: l => `Если партнёр не придёт до ${l}, мы объединим вас с другими студентами.`,
+    s_takip: 'Продолжайте следить за телефоном и экраном.',
+    s_birlesim: 'Ваш партнёр не пришёл; мы объединили вас с другими студентами.',
+    s_masa_b: 'Ваш партнёр не пришёл', s_masa_m: 'Пожалуйста, сразу подойдите к столу регистрации.',
+    s_bittiNot: 'Если ваш экзамен закончился, заполните короткую анкету ниже. Если экзамен ещё не начался, ждите у аудитории; анкету можно заполнить после экзамена.',
+    s_tesekkur: 'Спасибо. Ваша оценка будет объявлена в AnaSİS.', s_anketGonder: 'Отправить анкету',
     trans_b: 'Не удалось подобрать партнёра', trans_m: s => `Вы будете сдавать экзамен в следующем слоте (${s}); там вы первым(-ой) в очереди на подбор партнёра. Следите за телефоном; когда партнёр будет определён, здесь появится ваша комиссия.`,
     juri: (lv, n, r) => `${lv} · Комиссия ${n} · Аудитория ${r}`, saat: 'Время', es: 'Ваш партнёр', tek: 'Вы будете сдавать один (одна)', esYok: 'Пока не определён; система подберёт партнёра', ekranAcik: 'Не выключайте экран телефона: система вызовет вас через этот экран.',
     atandi_m: 'Ждите у аудитории; комиссия вас вызовет.', gecikme: 'Ваша комиссия задержится на несколько минут; подождите у двери.',
@@ -673,6 +721,9 @@ function durum(g) {
     case 'red': ana = kutu('bad', t.red_b); break;
     case 'gelmedi': alarmIste(g.alarm || 'gelmedi'); ana = kutu('bad', t.gelmedi_b, `<p><b>${esc(t.gelmedi_m)}</b></p>`); break;
     case 'girmedi': ana = kutu('bad', t.girmedi_b(g.gecmis.gun, (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat)); break;
+    case 'sabit':
+      if (g.durum === 'bitti') return bas(g) + `<div class="phone stack">${ust}${sabitIcerik(g, t)}</div>` + (g.anket ? `<div style="margin-top:10px">${vAnket(t.s_anketGonder)}</div>` : '') + alt(g);
+      ana = sabitIcerik(g, t); break;
     case 'kagitBitti':
       if (g.anket) return bas(g) + ust + `<div class="note n-ok"><b>${esc(t.bitti_b)}</b> ${esc(t.kagit_m)}</div><div class="note n-warn"><b>${esc(t.anketKagit)}</b></div>` + vAnket() + alt(g);
       ana = kutu('ok', g.gecmis ? t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat) : t.bitti_b, p(t.kagit_m)); break;
@@ -692,7 +743,31 @@ function alt() { return `<div class="row" style="margin-top:12px;justify-content
 /* ---------- anket ---------- */
 function rad(ad, v, etiket, sec) { return `<label class="${sec ? 'sec' : ''}"><input type="radio" name="${ad}" value="${v}" ${sec ? 'checked' : ''}>${esc(etiket)}</label>`; }
 function vIzin(ad, val) { const t = L(); return `<div class="small" style="margin-top:6px">${esc(t.isimSor)}</div><div class="lik">${rad(ad, '1', t.evet, val === true)}${rad(ad, '0', t.hayir, val === false)}</div>`; }
-function vAnket() {
+/* Alternatif 5 (sabit plan) öğrenci ekranı – MehDer 10–11.11.2026 */
+function sabitIcerik(g, t) {
+  const p = x => x ? `<p>${esc(x)}</p>` : '';
+  const katY = k => !k ? '' : dil === 'en' ? (/^Zemin/.test(k) ? 'Ground floor' : 'Floor ' + k.split('.')[0]) : dil === 'ru' ? (/^Zemin/.test(k) ? 'Цокольный этаж' : k.split('.')[0] + '-й этаж') : k;
+  const notY = n => !n ? '' : n.t === 'akt' ? t.s_akt(n.s) : t.s_bir(n.j);
+  const etik = g.esler.length > 1 ? [t.s_es1, t.s_es2, t.s_es3] : [t.s_es];
+  const esSat = () => g.esler.map((e, i) => `<dt>${esc(etik[i] || t.s_es)}</dt><dd>${e.d === 'ok' ? `<b>${esc(e.ad)}</b>` : `<i class="muted">${esc(e.d === 'gelmedi' ? t.s_gelmedi : t.s_bekleniyor)}</i>`}${e.n ? ` <span class="small muted">(${esc(notY(e.n))})</span>` : ''}</dd>`).join('');
+  const kv = (saatli) => `<dl class="kv">${saatli ? `<dt>${esc(t.saat)}</dt><dd>${esc(g.saat)}</dd>` : ''}${esSat()}</dl>`;
+  const kisi = g.esler.length > 1 ? `<p><b>${esc(g.kisi === 3 ? t.s_kisi3 : t.s_kisi2)}</b></p>` : '';
+  const mola = g.mola ? `<div class="note n-warn"><b>${esc(t.s_mola(g.mola.a, g.mola.b, g.mola.ek))}</b></div>` : '';
+  const ank = `<p class="small muted">${esc(t.s_anketNot)}</p>`;
+  const takip = p(t.s_acilis(g.acilis, g.acilisEk));
+  const juriKutu = () => kutu('ok', t.juri(g.j.lv, g.j.no, g.j.room) + (g.j.kat ? ' · ' + katY(g.j.kat) : ''), kv(true) + kisi);
+  switch (g.durum) {
+    case 'bekle': return mola + kutu('acc', t.esBekle_b, kv(true) + kisi + p(t.s_bekle_m) + takip) + ank;
+    case 'esbelli': return mola + kutu('acc', t.esbelli_b, kv(true) + kisi + takip) + ank;
+    case 'trans': return mola + kutu('warn', t.s_trans_b(g.saat), kv(false) + takip) + ank;
+    case 'esYok': return kutu('warn', t.s_esYok_b, p(g.sonraki ? t.s_esYok_m(g.sinir, g.sinirEk, g.sonraki) : t.s_esYok_son(g.sinir, g.sinirEk)) + `<p><b>${esc(t.s_takip)}</b></p>`) + ank;
+    case 'juri': return mola + (g.birlesim ? `<div class="note n-warn"><b>${esc(t.s_birlesim)}</b></div>` : '') + juriKutu() + p(t.atandi_m) + ank;
+    case 'masa': return kutu('bad', t.s_masa_b, `<p><b>${esc(t.s_masa_m)}</b></p>`);
+    case 'bitti': return g.anket ? juriKutu() + `<div class="note n-warn"><b>${esc(t.s_bittiNot)}</b></div>` : kutu('ok', t.s_tesekkur, '');
+  }
+  return '';
+}
+function vAnket(gonderEtiket) {
   const t = L(), a = anket;
   const maddeler = t.madde.map((m, i) => `<div class="q"><div>${i + 1}. ${esc(m)}</div><div class="lik">${t.olcek.map((o, v) => rad('m' + i, v, o, a.l[i] === v)).join('')}</div></div>`).join('');
   const sorun = `<div class="q"><div>9. ${esc(t.a_sorun)}</div><div class="lik">${rad('sorun', '1', t.evet, a.sorun === true)}${rad('sorun', '0', t.hayir, a.sorun === false)}</div>
@@ -700,7 +775,7 @@ function vAnket() {
   const diger = `<div class="q"><div>10. ${esc(t.a_diger)} <span class="small muted">(${esc(t.istege)})</span></div><textarea id="aDiger" rows="3" maxlength="1000">${esc(a.diger || '')}</textarea>
     ${(a.diger || '').trim() ? vIzin('dIzin', a.digerIzin) : ''}<p class="small muted">${esc(t.yazDil)}</p></div>`;
   return `<form class="phone stack" data-f="anket"><div class="big">${esc(t.anketBaslik)}</div><div class="note n-acc">${esc(t.anketUst1)}</div><p class="small muted">${esc(t.anketUst2)}</p>
-    ${maddeler}${sorun}${diger}${anketMesaj ? `<div class="note n-bad">${esc(anketMesaj)}</div>` : ''}<button class="btn big" type="submit">${esc(t.anketGonder)}</button></form>`;
+    ${maddeler}${sorun}${diger}${anketMesaj ? `<div class="note n-bad">${esc(anketMesaj)}</div>` : ''}<button class="btn big" type="submit">${esc(gonderEtiket || t.anketGonder)}</button></form>`;
 }
 
 /* ---------- çizim ve sunucu ---------- */

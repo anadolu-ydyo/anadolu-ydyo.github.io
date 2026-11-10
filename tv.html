@@ -209,21 +209,30 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 #saat{font:700 64px/1 var(--f-mono,monospace);border:2px solid var(--line);border-radius:14px;padding:8px 18px;margin-bottom:6px;font-variant-numeric:tabular-nums}
 .ot .ob.b2{font-size:29px}
 .dzb{font-size:26px;font-weight:800;background:var(--accent-soft,#e3f1f3);border-radius:8px;padding:4px 12px;margin:6px 0 2px} .dzb span{font-weight:500;font-size:16px;color:var(--muted)}
-.tt.pt{font-size:23px;table-layout:fixed} .tt.pt td{padding:9px 8px;overflow:hidden;text-overflow:ellipsis} .tt.pt th{font-size:13px}
+.tt.pt{font-size:23px;table-layout:fixed;border-collapse:collapse} .tt.pt td{padding:8px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap} .tt.pt th{font-size:13px}
 .eh{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center} .eh .es{color:var(--accent);font-weight:800;font-size:15px;padding:0 6px}
-.pno{font-family:var(--f-mono);color:var(--muted);font-size:18px} .nm{font-size:25px} .bk2{color:var(--muted);font-style:italic;font-size:17px;padding-left:4px}
-.tt.pt tr.u3 td{background:#fdebd3} .tt.pt tr.u3.ust td{border-bottom:none} .tt.pt tr.ek td{padding-top:0;padding-left:24px}
-.eknot{font-size:15px;color:#a35a00;font-weight:700;margin-left:8px} .u3e{display:inline-block;background:#e98a15;color:#fff;font-size:13px;font-weight:800;border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:middle}
+.pno{display:inline-block;width:58px;font-family:var(--f-mono);color:var(--muted);font-size:17px} .nm{font-size:24px}
+.bk2{color:var(--muted);font-style:italic;font-size:20px} .tt.pt td.jd{font-size:21px;padding-left:4px;padding-right:4px} .tt.pt td.jd b{font-size:22px} .kat{font-size:15px;color:var(--muted);font-weight:600} .tt.pt td.jd .bk2{font-size:16px}
+.tt.pt tbody.u3 td{background:#fdebd3} .tt.pt tbody.u3{outline:3px solid #d9780f;outline-offset:-2px} .tt.pt tbody.u3 tr:first-child td{border-bottom:none}
+.tt.pt tr.ek td{padding-top:0} .o3{font-size:16px;font-weight:800;color:#a35a00;margin-left:6px} .eknot{font-size:15px;color:#a35a00;font-weight:600;margin-left:6px}
+.u3e{display:inline-block;background:#e98a15;color:#fff;font-size:15px;font-weight:800;border-radius:6px;padding:2px 9px}
+.ot.kisa{padding-top:10px;padding-bottom:10px} .ot.kisa .oh b{font-size:22px!important} .ot.kisa .ob{font-size:17px!important}
+.kdzb{font-size:17px;font-weight:800;color:var(--muted);margin:4px 0 2px} .kdzb span{font-weight:500}
+.kc{display:grid;grid-template-columns:minmax(0,28fr) 34px minmax(0,30fr) 26px minmax(0,33fr);align-items:baseline;font-size:17px;padding:2px 0;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden} .kc .pno{width:auto;font-size:14px;margin-right:4px} .kc .es{color:var(--accent);font-weight:800;text-align:center} .kc>span{overflow:hidden;text-overflow:ellipsis} .kc .es+span{padding-left:16px} .kc .bk2{font-size:15px} .kc.u3k{background:#fdebd3}
+#simdi{font-size:22px!important;font-weight:700}
+.molab{margin:6px 0 4px;padding:8px 12px;border-radius:10px;background:#fff4d6;font-size:24px;font-weight:800} .molab .en{font-size:15px;font-weight:500}
+@keyframes nefesA{0%,55%{color:var(--ink);opacity:1}78%{color:#8f8f8f;opacity:.75}100%{color:var(--ink);opacity:1}}
+.nefes{animation:nefesA 2.4s ease-in-out infinite} .nefes5{animation:nefesA 2.4s ease-in-out 2}
+.tvduyuru #duyuruTr{font-size:36px!important}
 </style></head>
 <body class="tvpage">
 <div class="wrap" lang="tr" style="max-width:1600px;padding-top:20px">
   <div class="note n-bad" id="hata" hidden></div>
-  <div class="res r-hl tvduyuru" id="duyuru" hidden><div id="duyuruTr"></div><div class="en" id="duyuruEn" lang="en"></div></div>
   <main id="app" class="tv">
-    <div class="panel qrbox"><div id="saat" hidden>--:--:--</div><h2>İngilizce Speaking Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p><p class="muted en" lang="en">Scan the QR code and enter your student number. If it does not open, use the code below.</p><p class="muted"><b>QR kodu telefonunun kamerasıyla okut; gizli sekme kullanma.</b> Notunu daha sonra aynı telefonda ve aynı tarayıcıda göreceksin.</p><p class="muted en" lang="en">Scan with your phone camera; do not use a private tab. You will see your score later on the same phone and browser.</p>
+    <div class="panel qrbox"><div id="saat" hidden>--:--:--</div><h2>İngilizce Konuşma Sınavı</h2><p class="muted">QR kodunu okut, açılan sayfaya öğrenci numaranı yaz. QR açılmazsa aşağıdaki kodu kullan.</p><p class="muted en" lang="en">Scan the QR code and enter your student number. If it does not open, use the code below.</p>
       <div id="qr"></div><div class="code" id="kod">----</div><div class="bar"><i id="bar" style="width:100%"></i></div>
       <p class="small muted">Kod 60 saniyede bir değişir. Telefonunda sorun yaşayan öğrenciler kantin tarafındaki kayıt masasına başvursun.</p></div>
-    <div class="stack"><div class="note n-acc" id="simdi">—</div><div id="tablolar"></div></div>
+    <div class="stack"><div class="res r-hl tvduyuru" id="duyuru" hidden><div id="duyuruTr"></div><div class="en" id="duyuruEn" lang="en"></div></div><div class="note n-acc" id="simdi">—</div><div id="tablolar"></div></div>
   </main>
 </div>
 <script>
@@ -335,6 +344,7 @@ function ciz(v) {
   $('.wrap').classList.toggle('genis', sb); $('#app').classList.toggle('sabit', sb); $('#saat').hidden = !sb;
   $('#kod').textContent = v.kod; $('#simdi').textContent = (v.denemeSaat ? 'DENEME SAATİ ' + v.denemeSaat + ' · ' : '') + (v.gun ? v.gun + ' · ' : '') + (v.duzeyMetni ? v.duzeyMetni + ' · ' : '') + v.simdi;
   $('#tablolar').innerHTML = (v.tablolar || []).map(tablo).join('');
+  ilkCizim = false;
   sigdir();
   /* GitHub Pages'te açılan TV, QR'ı kendi klasöründeki öğrenci sayfasına verir (script.google.com çok hesaplı telefonlarda açılmıyor – 6.11.2026 okul denemesi) */
   const qUrl = /\.github\.io$/.test(location.hostname) && v.kod ? location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + '?v=ogrenci&c=' + v.kod : v.url;
@@ -343,14 +353,29 @@ function ciz(v) {
   const d = v.duyuru; $('#duyuru').hidden = !d; if (d) { $('#duyuruTr').textContent = d.metin; $('#duyuruEn').textContent = d.en || ''; }
 }
 const bk = '<td class="bk">bekleniyor</td>';
+function tabloSabitKisa(b) {   // alttaki (sonraki) oturum: sade, küçük (MehDer 11.11.2026)
+  const ki = x => x ? `<span class="pno">…${esc(x.no)}</span><b class="${yeniMi(x.no) ? 'nefes5' : ''}">${esc(x.ad)}</b>` : '<span class="bk2">bekleniyor</span>';
+  const blok = d => `<div class="kdz"><div class="kdzb">${esc(d.lv)} Düzeyi <span>· ${d.ciftler.length} çift</span></div>${d.ciftler.map(c => `<div class="kc${c.uclu ? ' u3k' : ''}"><span>${ki(c.m[0])}</span><span class="es">↔</span><span>${ki(c.m[1])}</span><span class="es">${c.ek.length ? '+' : ''}</span><span>${c.ek.map(ki).join(', ')}</span></div>`).join('')}</div>`;
+  return `<div class="ot kisa"><div class="oh"><b>Sonraki: Oturum ${esc(b.saat)}</b><span class="ob">${esc(b.bilgi)}</span></div>`
+    + `<div class="tgrid" style="grid-template-columns:repeat(${b.bloklar.length},minmax(0,1fr));align-items:start">${b.bloklar.map(blok).join('')}</div></div>`;
+}
 function tabloSabit(b) {
-  const bk2 = '<span class="bk2">bekleniyor</span>', ki = x => x ? `<span class="pno">…${esc(x.no)}</span> <b class="nm">${esc(x.ad)}</b>` : bk2;
-  const blok = d => `<div class="dz"><div class="dzb">${esc(d.lv)} Düzeyi <span>· ${d.ciftler.length} çift</span></div><table class="tt pt"><colgroup><col style="width:37%"><col style="width:37%"><col style="width:13%"><col style="width:13%"></colgroup><thead><tr><th colspan="2"><div class="eh"><span>Öğrenci-1</span><span class="es">←&nbsp;EŞİ&nbsp;→</span><span>Öğrenci-2</span></div></th><th>Jüri</th><th>Derslik</th></tr></thead><tbody>`
-    + d.ciftler.map(c => `<tr class="${c.uclu ? 'u3' : ''}${c.uclu && c.ek.length ? ' ust' : ''}"><td>${ki(c.m[0])}</td><td>${ki(c.m[1])}${c.uclu ? '<span class="u3e">3\'LÜ</span>' : ''}</td>${c.juri ? `<td><b>${esc(c.juri)}</b></td>` : bk}${c.derslik ? `<td><b>${esc(c.derslik)}</b></td>` : bk}</tr>`
-      + c.ek.map(e => `<tr class="ek${c.uclu ? ' u3' : ''}"><td colspan="4">+ <span class="pno">…${esc(e.no)}</span> <b class="nm">${esc(e.ad)}</b> <span class="eknot">${esc(e.not)}</span></td></tr>`).join('')).join('') + '</tbody></table></div>';
-  return `<div class="ot${b.acik ? ' acik' : ''}${b.ikinci ? ' ikinci' : ''}"><div class="oh"><b>Oturum ${esc(b.saat)}</b><span class="ob b2">${esc(b.bilgi)}</span></div><div class="oe" lang="en">Session ${esc(b.saat)} · ${esc(b.en)}</div>`
+  if (b.ikinci) return tabloSabitKisa(b);
+  const bk2 = '<span class="bk2">bekleniyor</span>', ki = x => x ? `<span class="pno">…${esc(x.no)}</span><b class="nm${yeniMi(x.no) ? ' nefes5' : ''}">${esc(x.ad)}</b>` : `<span class="pno"></span>${bk2}`;
+  const jd = (c, a) => c[a] ? `<td class="jd"><b>${esc(c[a])}</b>${a === 'derslik' && c.kat ? `<div class="kat">${esc(c.kat)}</div>` : ''}</td>` : `<td class="jd">${bk2}</td>`;
+  const cift = c => `<tbody class="${c.uclu ? 'u3' : ''}"><tr><td>${ki(c.m[0])}</td><td>${ki(c.m[1])}</td>${jd(c, 'juri')}${jd(c, 'derslik')}</tr>`
+    + c.ek.map(e => `<tr class="ek"><td colspan="4">${ki(e)} <span class="o3">→ Öğrenci-3</span>${c.uclu ? ' <span class="u3e">3\'LÜ</span>' : ''}${e.not ? ` <span class="eknot">${esc(e.not)}</span>` : ''}</td></tr>`).join('') + '</tbody>';
+  const blok = d => `<div class="dz"><div class="dzb">${esc(d.lv)} Düzeyi <span>· ${d.ciftler.length} çift</span></div><table class="tt pt"><colgroup><col style="width:35.5%"><col style="width:35.5%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th colspan="2"><div class="eh"><span>Öğrenci-1</span><span class="es">←&nbsp;EŞİ&nbsp;→</span><span>Öğrenci-2</span></div></th><th>Jüri</th><th>Derslik</th></tr></thead>`
+    + d.ciftler.map(cift).join('') + '</table></div>';
+  const ac = b.acik && nefesBilgi(b.saat);
+  return `<div class="ot${b.acik ? ' acik' : ''}${b.ikinci ? ' ikinci' : ''}"><div class="oh"><b>Oturum ${esc(b.saat)}</b><span class="ob b2${ac ? ' nefes' : ''}">${esc(b.bilgi)}</span></div><div class="oe" lang="en">Session ${esc(b.saat)} · ${esc(b.en)}</div>`
+    + (b.mola ? `<div class="molab nefes">${esc(b.mola)}<div class="en" lang="en">${esc(b.molaEn)}</div></div>` : '')
     + (b.satir.length ? `<div class="tgrid" style="grid-template-columns:repeat(${b.bloklar.length},minmax(0,1fr));align-items:start">${b.bloklar.map(blok).join('')}</div>` : '<p class="muted">Henüz QR okutan öğrenci yok.</p>') + '</div>';
 }
+/* yeni görünen öğrenci adı 5 sn "nefes" alır; jüri/derslik açılınca bilgi satırı 2 dk "nefes" alır (MehDer 11.11.2026) */
+const gorulen = {}, acilisGorulen = {}; let ilkCizim = true;
+function yeniMi(no) { const t = Date.now(); if (!(no in gorulen)) gorulen[no] = ilkCizim ? 0 : t; return t - gorulen[no] < 5000; }
+function nefesBilgi(saat) { const t = Date.now(); if (!(saat in acilisGorulen)) acilisGorulen[saat] = t; return t - acilisGorulen[saat] < 120000; }
 function tablo(b) {
   if (b.sabit) return tabloSabit(b);
   const n = b.satir.length, parca = n > 20 ? Math.ceil(n / 2) : n || 1, gruplar = [];
