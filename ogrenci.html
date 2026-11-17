@@ -286,7 +286,7 @@ function notBlok(v, g, no, butonAd) {
   const ozAd = k => (v.ozler.find(o => o.k === k) || {}).ad || '';
   const B = birlesik(v, g, no);
   let durum = '';
-  if (v.neg && v.es) durum = `<div class="note n-hl">Negotiation gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
+  if (v.neg && v.es) durum = `<div class="note n-hl">Yeniden değerlendirme gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
   else if (v.tur > 1 && v.hl.length && v.es) durum = `<div class="note n-hl">Toplam notlarınız arasında 2 puandan fazla fark var, öğrencinin performansını yeniden değerlendirin.<p>Sizin toplamınız: <b>${v.top}</b> · Eşinizin toplamı: <b>${v.es.top}</b>. Turuncu bentlerde notlarınız farklı; gerekirse bütün bentleri değiştirebilirsiniz.</p></div>`;
   const kr = B.oz ? '' : `<div class="crit">${v.kr.map(c => { const hl = v.hl.includes(c.k); return `<label class="${hl ? 'hlb' : ''}">${esc(c.ad)} (0–${c.max})<input id="${g}-${no}-${c.k}" type="number" min="0" max="${c.max}" step="1" inputmode="numeric" value="${B.c[c.k] ?? ''}" ${c.acik ? '' : 'disabled'} data-not="${g}" data-no="${no}" data-k="${c.k}">${hl && v.es ? `<span class="pv">Eşiniz: ${v.es.c[c.k] ?? '—'}</span>` : ''}</label>`; }).join('')}</div>`;
   const buton = butonAd ? `<button class="btn sm" data-act="${g === 'S' ? 'hesapla' : 'wKaydet'}" data-no="${no}" ${v.sub ? 'disabled' : ''}>${butonAd}</button>` : '';
@@ -336,6 +336,8 @@ const DIL = {
     s_esYok_son: (l, le) => `Eşin ${l}${le} kadar gelmezse seni başka öğrencilerle birleştireceğiz.`,
     s_takip: "Telefonunu ve TV'yi takip etmeye devam et.",
     s_birlesim: 'Eşin gelmedi; seni başka öğrencilerle birleştirdik.',
+    s_ucluBekle_b: '3. öğrenci bekleniyor', s_ucluBekle_m: s => `Jüri ve derslik ${s}'de burada görünecek.`,
+    s_ucluEksik: 'Sınava normalde 3\'lü gireceksiniz. Şimdi dersliğinize gidin ve jürinize şunu söyleyin:', s_ucluSoz: '"Sınava normalde 3\'lü gireceğiz, ama 3. öğrenci henüz gelmedi. Sınav saatini 5 dakika geçene kadar beklememiz söylendi."',
     s_masa_b: 'Eşin gelmedi', s_masa_m: 'Lütfen hemen kayıt masasına gel.',
     s_bittiNot: 'Sınavın bittiyse lütfen aşağıdaki kısa anketi doldur. Sınavın henüz başlamadıysa dersliğin önünde sıranı bekle; anketi sınavdan sonra doldurabilirsin.',
     s_tesekkur: "Teşekkürler. Notun AnaSİS'te duyurulacaktır.", s_anketGonder: 'Anketi gönder',
@@ -406,6 +408,8 @@ const DIL = {
     s_esYok_son: l => `If your partner does not arrive by ${l}, we will group you with other students.`,
     s_takip: 'Keep watching your phone and the TV.',
     s_birlesim: 'Your partner did not come; we have grouped you with other students.',
+    s_ucluBekle_b: 'Waiting for the 3rd student', s_ucluBekle_m: s => `Your jury and room will appear here at ${s}.`,
+    s_ucluEksik: 'You are scheduled as a group of 3. Go to your room now and tell your jury:', s_ucluSoz: '"We are a group of 3, but the 3rd student has not arrived yet. We were told to wait until 5 minutes past the exam time."',
     s_masa_b: 'Your partner did not come', s_masa_m: 'Please come to the registration desk now.',
     s_bittiNot: 'If your exam is over, please fill in the short survey below. If your exam has not started yet, wait in front of your room; you can fill in the survey after your exam.',
     s_tesekkur: 'Thank you. Your score will be announced on AnaSİS.', s_anketGonder: 'Submit the survey',
@@ -476,6 +480,8 @@ const DIL = {
     s_esYok_son: l => `Если партнёр не придёт до ${l}, мы объединим вас с другими студентами.`,
     s_takip: 'Продолжайте следить за телефоном и экраном.',
     s_birlesim: 'Ваш партнёр не пришёл; мы объединили вас с другими студентами.',
+    s_ucluBekle_b: 'Ожидается 3-й студент', s_ucluBekle_m: s => `Комиссия и аудитория появятся здесь в ${s}.`,
+    s_ucluEksik: 'Вы сдаёте экзамен в группе из 3 человек. Идите в аудиторию и скажите комиссии:', s_ucluSoz: '«Мы группа из 3 человек, но 3-й студент ещё не пришёл. Нам сказали ждать 5 минут после начала экзамена.»',
     s_masa_b: 'Ваш партнёр не пришёл', s_masa_m: 'Пожалуйста, сразу подойдите к столу регистрации.',
     s_bittiNot: 'Если ваш экзамен закончился, заполните короткую анкету ниже. Если экзамен ещё не начался, ждите у аудитории; анкету можно заполнить после экзамена.',
     s_tesekkur: 'Спасибо. Ваша оценка будет объявлена в AnaSİS.', s_anketGonder: 'Отправить анкету',
@@ -723,7 +729,7 @@ function durum(g) {
     case 'girmedi': ana = kutu('bad', t.girmedi_b(g.gecmis.gun, (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat)); break;
     case 'sabit':
       if (g.durum === 'bitti') return bas(g) + `<div class="phone stack">${ust}${sabitIcerik(g, t)}</div>` + (g.anket ? `<div style="margin-top:10px">${vAnket(t.s_anketGonder)}</div>` : '') + alt(g);
-      ana = sabitIcerik(g, t); break;
+      ana = sabitIcerik(g, t); if (g.erkenSon != null) ek = `<button class="btn big ${g.erken ? 'ghost' : ''}" data-act="erken">${esc(g.erken ? t.erkenKaldir : t.erken)}</button><p class="small muted">${esc(t.erkenNot)}</p>`; break;
     case 'kagitBitti':
       if (g.anket) return bas(g) + ust + `<div class="note n-ok"><b>${esc(t.bitti_b)}</b> ${esc(t.kagit_m)}</div><div class="note n-warn"><b>${esc(t.anketKagit)}</b></div>` + vAnket() + alt(g);
       ana = kutu('ok', g.gecmis ? t.gecmis_b(g.gecmis.gun, '', (dil === 'tr' || !dil) ? g.gecmis.saatYdi : g.gecmis.saat) : t.bitti_b, p(t.kagit_m)); break;
@@ -761,7 +767,8 @@ function sabitIcerik(g, t) {
     case 'esbelli': return mola + kutu('acc', t.esbelli_b, kv(true) + kisi + takip) + ank;
     case 'trans': return mola + kutu('warn', t.s_trans_b(g.saat), kv(false) + takip) + ank;
     case 'esYok': return kutu('warn', t.s_esYok_b, p(g.sonraki ? t.s_esYok_m(g.sinir, g.sinirEk, g.sonraki) : t.s_esYok_son(g.sinir, g.sinirEk)) + `<p><b>${esc(t.s_takip)}</b></p>`) + ank;
-    case 'juri': return mola + (g.birlesim ? `<div class="note n-warn"><b>${esc(t.s_birlesim)}</b></div>` : '') + juriKutu() + p(t.atandi_m) + ank;
+    case 'ucluBekle': return mola + kutu('acc', t.s_ucluBekle_b, kv(true) + kisi + p(t.s_ucluBekle_m(g.ucluSaat))) + ank;
+    case 'juri': return mola + (g.ucluEksik ? `<div class="note n-warn">${esc(t.s_ucluEksik)}<p><b>${esc(t.s_ucluSoz)}</b></p></div>` : '') + (g.birlesim ? `<div class="note n-warn"><b>${esc(t.s_birlesim)}</b></div>` : '') + juriKutu() + p(t.atandi_m) + ank;
     case 'masa': return kutu('bad', t.s_masa_b, `<p><b>${esc(t.s_masa_m)}</b></p>`);
     case 'bitti': return g.anket ? juriKutu() + `<div class="note n-warn"><b>${esc(t.s_bittiNot)}</b></div>` : kutu('ok', t.s_tesekkur, '');
   }

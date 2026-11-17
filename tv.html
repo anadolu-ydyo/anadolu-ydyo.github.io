@@ -221,6 +221,10 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .kc{display:grid;grid-template-columns:minmax(0,28fr) 34px minmax(0,30fr) 26px minmax(0,33fr);align-items:baseline;font-size:17px;padding:2px 0;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden} .kc .pno{width:auto;font-size:14px;margin-right:4px} .kc .es{color:var(--accent);font-weight:800;text-align:center} .kc>span{overflow:hidden;text-overflow:ellipsis} .kc .es+span{padding-left:16px} .kc .bk2{font-size:15px} .kc.u3k{background:#fdebd3}
 #simdi{font-size:22px!important;font-weight:700}
 .molab{margin:6px 0 4px;padding:8px 12px;border-radius:10px;background:#fff4d6;font-size:24px;font-weight:800} .molab .en{font-size:15px;font-weight:500}
+/* Madde 8 (MehDer 12.11.2026): yeni ad 5 sn açık gri ↔ koyu siyah, sonunda siyah; 2'li tamam açık mavi zemin + çerçeve, 3'lü turuncu, bekleniyor renksiz */
+@keyframes yanipA{0%,100%{color:#000}50%{color:#c4c4c4}} .yanip{animation:yanipA 1s linear 5}
+.tt.pt tbody.u2 td{background:#e3effc} .tt.pt tbody.u2{outline:2px solid #6b9fd6;outline-offset:-2px} .tt.pt tbody.u2 tr:first-child td{border-bottom:none}
+.kc.u2k{background:#e3effc;outline:1px solid #6b9fd6} .kc.u3k{background:#fdebd3;outline:2px solid #d9780f}
 @keyframes nefesA{0%,55%{color:var(--ink);opacity:1}78%{color:#8f8f8f;opacity:.75}100%{color:var(--ink);opacity:1}}
 .nefes{animation:nefesA 2.4s ease-in-out infinite} .nefes5{animation:nefesA 2.4s ease-in-out 2}
 .tvduyuru #duyuruTr{font-size:36px!important}
@@ -327,7 +331,7 @@ function notBlok(v, g, no, butonAd) {
   const ozAd = k => (v.ozler.find(o => o.k === k) || {}).ad || '';
   const B = birlesik(v, g, no);
   let durum = '';
-  if (v.neg && v.es) durum = `<div class="note n-hl">Negotiation gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
+  if (v.neg && v.es) durum = `<div class="note n-hl">Yeniden değerlendirme gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
   else if (v.tur > 1 && v.hl.length && v.es) durum = `<div class="note n-hl">Toplam notlarınız arasında 2 puandan fazla fark var, öğrencinin performansını yeniden değerlendirin.<p>Sizin toplamınız: <b>${v.top}</b> · Eşinizin toplamı: <b>${v.es.top}</b>. Turuncu bentlerde notlarınız farklı; gerekirse bütün bentleri değiştirebilirsiniz.</p></div>`;
   const kr = B.oz ? '' : `<div class="crit">${v.kr.map(c => { const hl = v.hl.includes(c.k); return `<label class="${hl ? 'hlb' : ''}">${esc(c.ad)} (0–${c.max})<input id="${g}-${no}-${c.k}" type="number" min="0" max="${c.max}" step="1" inputmode="numeric" value="${B.c[c.k] ?? ''}" ${c.acik ? '' : 'disabled'} data-not="${g}" data-no="${no}" data-k="${c.k}">${hl && v.es ? `<span class="pv">Eşiniz: ${v.es.c[c.k] ?? '—'}</span>` : ''}</label>`; }).join('')}</div>`;
   const buton = butonAd ? `<button class="btn sm" data-act="${g === 'S' ? 'hesapla' : 'wKaydet'}" data-no="${no}" ${v.sub ? 'disabled' : ''}>${butonAd}</button>` : '';
@@ -354,16 +358,16 @@ function ciz(v) {
 }
 const bk = '<td class="bk">bekleniyor</td>';
 function tabloSabitKisa(b) {   // alttaki (sonraki) oturum: sade, küçük (MehDer 11.11.2026)
-  const ki = x => x ? `<span class="pno">…${esc(x.no)}</span><b class="${yeniMi(x.no) ? 'nefes5' : ''}">${esc(x.ad)}</b>` : '<span class="bk2">bekleniyor</span>';
-  const blok = d => `<div class="kdz"><div class="kdzb">${esc(d.lv)} Düzeyi <span>· ${d.ciftler.length} çift</span></div>${d.ciftler.map(c => `<div class="kc${c.uclu ? ' u3k' : ''}"><span>${ki(c.m[0])}</span><span class="es">↔</span><span>${ki(c.m[1])}</span><span class="es">${c.ek.length ? '+' : ''}</span><span>${c.ek.map(ki).join(', ')}</span></div>`).join('')}</div>`;
+  const ki = x => x ? `<span class="pno">…${esc(x.no)}</span><b ${yanip(x.no)}>${esc(x.ad)}</b>` : '<span class="bk2">bekleniyor</span>';
+  const blok = d => `<div class="kdz"><div class="kdzb">${esc(d.lv)} Düzeyi <span>· ${d.ciftler.length} çift</span></div>${d.ciftler.map(c => `<div class="kc${c.renk ? ' ' + c.renk + 'k' : ''}"><span>${ki(c.m[0])}</span><span class="es">↔</span><span>${ki(c.m[1])}</span><span class="es">${c.ek.length ? '+' : ''}</span><span>${c.ek.map(ki).join(', ')}</span></div>`).join('')}</div>`;
   return `<div class="ot kisa"><div class="oh"><b>Sonraki: Oturum ${esc(b.saat)}</b><span class="ob">${esc(b.bilgi)}</span></div>`
     + `<div class="tgrid" style="grid-template-columns:repeat(${b.bloklar.length},minmax(0,1fr));align-items:start">${b.bloklar.map(blok).join('')}</div></div>`;
 }
 function tabloSabit(b) {
   if (b.ikinci) return tabloSabitKisa(b);
-  const bk2 = '<span class="bk2">bekleniyor</span>', ki = x => x ? `<span class="pno">…${esc(x.no)}</span><b class="nm${yeniMi(x.no) ? ' nefes5' : ''}">${esc(x.ad)}</b>` : `<span class="pno"></span>${bk2}`;
+  const bk2 = '<span class="bk2">bekleniyor</span>', ki = x => x ? `<span class="pno">…${esc(x.no)}</span><b ${yanip(x.no, 'nm')}>${esc(x.ad)}</b>` : `<span class="pno"></span>${bk2}`;
   const jd = (c, a) => c[a] ? `<td class="jd"><b>${esc(c[a])}</b>${a === 'derslik' && c.kat ? `<div class="kat">${esc(c.kat)}</div>` : ''}</td>` : `<td class="jd">${bk2}</td>`;
-  const cift = c => `<tbody class="${c.uclu ? 'u3' : ''}"><tr><td>${ki(c.m[0])}</td><td>${ki(c.m[1])}</td>${jd(c, 'juri')}${jd(c, 'derslik')}</tr>`
+  const cift = c => `<tbody class="${c.renk || ''}"><tr><td>${ki(c.m[0])}</td><td>${ki(c.m[1])}</td>${jd(c, 'juri')}${jd(c, 'derslik')}</tr>`
     + c.ek.map(e => `<tr class="ek"><td colspan="4">${ki(e)} <span class="o3">→ Öğrenci-3</span>${c.uclu ? ' <span class="u3e">3\'LÜ</span>' : ''}${e.not ? ` <span class="eknot">${esc(e.not)}</span>` : ''}</td></tr>`).join('') + '</tbody>';
   const blok = d => `<div class="dz"><div class="dzb">${esc(d.lv)} Düzeyi <span>· ${d.ciftler.length} çift</span></div><table class="tt pt"><colgroup><col style="width:35.5%"><col style="width:35.5%"><col style="width:15%"><col style="width:14%"></colgroup><thead><tr><th colspan="2"><div class="eh"><span>Öğrenci-1</span><span class="es">←&nbsp;EŞİ&nbsp;→</span><span>Öğrenci-2</span></div></th><th>Jüri</th><th>Derslik</th></tr></thead>`
     + d.ciftler.map(cift).join('') + '</table></div>';
@@ -374,6 +378,8 @@ function tabloSabit(b) {
 }
 /* yeni görünen öğrenci adı 5 sn "nefes" alır; jüri/derslik açılınca bilgi satırı 2 dk "nefes" alır (MehDer 11.11.2026) */
 const gorulen = {}, acilisGorulen = {}; let ilkCizim = true;
+/* yanıp sönme her 5 sn'lik yenilemede baştan başlamasın: geçen süre kadar negatif gecikme verilir */
+function yanip(no, base) { const t = Date.now(); if (!(no in gorulen)) gorulen[no] = ilkCizim ? 0 : t; const g = t - gorulen[no]; return g < 5000 ? `class="${base || ''} yanip" style="animation-delay:-${g}ms"` : `class="${base || ''}"`; }
 function yeniMi(no) { const t = Date.now(); if (!(no in gorulen)) gorulen[no] = ilkCizim ? 0 : t; return t - gorulen[no] < 5000; }
 function nefesBilgi(saat) { const t = Date.now(); if (!(saat in acilisGorulen)) acilisGorulen[saat] = t; return t - acilisGorulen[saat] < 120000; }
 function tablo(b) {

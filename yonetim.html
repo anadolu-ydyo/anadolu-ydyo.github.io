@@ -187,10 +187,10 @@ textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .bar3{display:flex;height:10px;border-radius:5px;overflow:hidden;min-width:90px;background:var(--line)}.bar3 i{display:block}
 .bar3 .a{background:var(--ok)}.bar3 .b{background:var(--warn)}.bar3 .c{background:var(--bad)}
 </style>
-</head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script></head>
 <body>
 <div class="wrap" lang="tr">
-  <header class="band"><div><div class="eyebrow">Anadolu Üniversitesi YDYO Hazırlık</div><h1>Sınav Yönetimi</h1></div><div class="row" id="ust" hidden><button class="btn sm ghost" data-act="cikis">Çıkış</button></div></header>
+  <header class="band"><div><div class="eyebrow">Anadolu Üniversitesi YDYO Hazırlık</div><h1>Sınav Yönetimi</h1></div><div class="row" id="ust" hidden><span class="small muted" id="benAd" style="align-self:center"></span><button class="btn sm ghost" data-act="cikis">Çıkış</button></div></header>
   <div class="note n-bad" id="hata" hidden></div>
   <main id="app" data-url=""><div class="panel muted">Yükleniyor…</div></main>
 </div>
@@ -286,7 +286,7 @@ function notBlok(v, g, no, butonAd) {
   const ozAd = k => (v.ozler.find(o => o.k === k) || {}).ad || '';
   const B = birlesik(v, g, no);
   let durum = '';
-  if (v.neg && v.es) durum = `<div class="note n-hl">Negotiation gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
+  if (v.neg && v.es) durum = `<div class="note n-hl">Yeniden değerlendirme gerekli: iki hoca farklı özel durum seçti ya da biri özel durum, diğeri bent notu girdi.<p>Sizin seçiminiz: ${v.oz ? esc(ozAd(v.oz)) : 'bent notları'} · Eşiniz: ${v.es.oz ? esc(ozAd(v.es.oz)) : `bent notları (toplam ${v.es.top})`}. Eşinizle görüşüp aynı seçimi yapın.</p></div>`;
   else if (v.tur > 1 && v.hl.length && v.es) durum = `<div class="note n-hl">Toplam notlarınız arasında 2 puandan fazla fark var, öğrencinin performansını yeniden değerlendirin.<p>Sizin toplamınız: <b>${v.top}</b> · Eşinizin toplamı: <b>${v.es.top}</b>. Turuncu bentlerde notlarınız farklı; gerekirse bütün bentleri değiştirebilirsiniz.</p></div>`;
   const kr = B.oz ? '' : `<div class="crit">${v.kr.map(c => { const hl = v.hl.includes(c.k); return `<label class="${hl ? 'hlb' : ''}">${esc(c.ad)} (0–${c.max})<input id="${g}-${no}-${c.k}" type="number" min="0" max="${c.max}" step="1" inputmode="numeric" value="${B.c[c.k] ?? ''}" ${c.acik ? '' : 'disabled'} data-not="${g}" data-no="${no}" data-k="${c.k}">${hl && v.es ? `<span class="pv">Eşiniz: ${v.es.c[c.k] ?? '—'}</span>` : ''}</label>`; }).join('')}</div>`;
   const buton = butonAd ? `<button class="btn sm" data-act="${g === 'S' ? 'hesapla' : 'wKaydet'}" data-no="${no}" ${v.sub ? 'disabled' : ''}>${butonAd}</button>` : '';
@@ -297,13 +297,154 @@ function notBlok(v, g, no, butonAd) {
 </script>
 
 <script>
+/* BirimUI.html – Birim çalışmaları ekranı (hoca ve yönetim sayfalarında ortak; 17.11.2026).
+   Sayfanın global `ot` oturumunu ve `render(true)` işlevini kullanır. */
+let BV = null, bSec = null, bMsg = '', bHata = '', bTaslak = {}, bYukleniyor = false;
+const bEsc = esc;
+async function birimYukle() {
+  bYukleniyor = true;
+  try { const r = await run('apiBirim', ot); if (r.err) { bHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; BV = null; } else { BV = r; bHata = ''; if (!bSec || !BV.birimler.some(b => b.id === bSec)) bSec = (BV.birimler[0] || {}).id || null; } }
+  catch (e) { bHata = (e && e.message) || String(e); }
+  bYukleniyor = false; render(true);
+}
+function bDosyaTablo(b, L, arsiv) {
+  if (!L.length) return `<p class="small muted">${arsiv ? 'Arşivde dosya yok.' : 'Bu dönem yüklenmiş dosya yok.'}</p>`;
+  return `<div class="scroll"><table><thead><tr><th>Dosya</th><th>Etiket</th>${b.duzeyli ? '<th>Düzey</th>' : ''}<th>Yükleyen</th><th>Tarih</th>${arsiv ? '<th>Dönem</th>' : ''}<th></th></tr></thead><tbody>
+    ${L.map(d => `<tr><td><b>${bEsc(d.ad)}</b> <span class="small muted">${d.kb} KB</span></td><td><span class="pill p-acc">${bEsc(d.etiket)}</span></td>${b.duzeyli ? `<td>${d.lv === 'Ortak' ? '<span class="pill p-ok">Ortak</span>' : bEsc(d.lv)}</td>` : ''}
+      <td>${bEsc(d.kim)}</td><td class="small">${bEsc(d.tarih)}</td>${arsiv ? `<td class="small">${bEsc(d.donem)}</td>` : ''}
+      <td><div class="row"><button class="btn sm" data-bact="indir" data-id="${bEsc(d.id)}">İndir</button>
+        ${d.ortakYap ? (d.lv === 'Ortak' ? `<select class="sm" data-bact-sel="ortak" data-id="${bEsc(d.id)}" style="width:auto"><option value="">Düzeye al…</option>${BV.duzeyler.map(l => `<option>${l}</option>`).join('')}</select>` : `<button class="btn sm ghost" data-bact="ortak" data-id="${bEsc(d.id)}" data-lv="Ortak">Ortak yap</button>`) : ''}
+        ${d.kaldirabilir ? `<button class="btn sm bad ghost" data-bact="kaldir" data-id="${bEsc(d.id)}">Kaldır</button>` : ''}</div></td></tr>`).join('')}</tbody></table></div>`;
+}
+function bArsiv(b) {
+  if (!b.arsiv.length) return '';
+  const gr = {}; b.arsiv.forEach(d => (gr[d.donem] = gr[d.donem] || []).push(d));
+  return `<details class="panel"><summary><b>Arşiv – önceki dönemler ve yıllar</b> <span class="small muted">(${b.arsiv.length} dosya)</span></summary>
+    ${Object.keys(gr).sort().reverse().map(k => `<h4 style="margin:12px 0 6px">${bEsc(k)}</h4>${bDosyaTablo(b, gr[k], false)}`).join('')}</details>`;
+}
+function bHedefSec(b, id) {
+  return `<select id="${id}" style="width:auto"><option value="birim">Tüm birim</option>${b.duzeyli ? BV.duzeyler.map(l => `<option value="duzey:${l}">${l} düzeyi</option>`).join('') : ''}
+    ${b.uyeler.map(u => `<option value="hoca:${bEsc(u.e)}">${bEsc(u.ad)}${u.lv ? ' (' + u.lv + ')' : ''}</option>`).join('')}</select>`;
+}
+function bMesajlar(b) {
+  const yeni = b.yonetici ? `<div class="panel stack"><h4 style="margin:0">Yeni mesaj</h4>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><label class="small">Alıcı ${bHedefSec(b, 'bmHedef')}</label><label class="ck small"><input type="checkbox" id="bmBildir" checked> Bildirim e-postası gönder</label></div>
+    <textarea id="bmMetin" rows="3" maxlength="4000" data-btaslak="yeni:${b.id}" style="width:100%">${bEsc(bTaslak['yeni:' + b.id] || '')}</textarea>
+    <div><button class="btn sm" data-bact="mesaj">Gönder</button></div></div>` : '';
+  const L = b.mesajlar.map(m => {
+    const kisiler = [...new Map(m.yanit.filter(y => !y.yon).map(y => [y.ke, y.kim])).entries()];
+    return `<div class="panel stack" style="gap:8px"><div class="small muted">${bEsc(m.tarih)} · ${bEsc(m.kim)} → ${bEsc(m.hedef)}</div><div style="white-space:pre-wrap">${bEsc(m.metin)}</div>
+      ${m.yanit.map(y => `<div style="border-left:3px solid var(--line);padding-left:10px"><div class="small muted">${bEsc(y.tarih)} · ${bEsc(y.kim)}${y.yon && b.yonetici ? ' → ' + bEsc(y.hedef) : ''}</div><div style="white-space:pre-wrap">${bEsc(y.metin)}</div></div>`).join('')}
+      <details><summary class="small"><b>Yanıtla</b></summary><div class="stack" style="gap:6px;margin-top:6px">
+        ${b.yonetici ? `<div class="row" style="gap:8px;flex-wrap:wrap"><label class="small">Kime <select id="bk-${m.id}" style="width:auto"><option value="">Mesajın alıcıları</option>${kisiler.map(([e, ad]) => `<option value="${bEsc(e)}">${bEsc(ad)}</option>`).join('')}</select></label><label class="ck small"><input type="checkbox" id="bb-${m.id}"> Bildirim e-postası</label></div>` : ''}
+        <textarea id="by-${m.id}" rows="2" maxlength="4000" data-btaslak="y:${m.id}" style="width:100%">${bEsc(bTaslak['y:' + m.id] || '')}</textarea>
+        <div><button class="btn sm" data-bact="yanit" data-id="${m.id}">Yanıtı gönder</button></div></div></details></div>`;
+  }).join('');
+  return `<h3 style="margin:8px 0 0">Mesajlar</h3>${yeni}${L || '<p class="small muted">Mesaj yok.</p>'}`;
+}
+function vBirim() {
+  if (bHata) return `<div class="note n-bad">${bEsc(bHata)}</div>`;
+  if (!BV) return '<div class="panel muted">Birim çalışmaları yükleniyor…</div>';
+  if (!BV.birimler.length) return '<div class="panel">Görebileceğiniz bir birim yok.</div>';
+  const b = BV.birimler.find(x => x.id === bSec) || BV.birimler[0];
+  const sekme = BV.birimler.length > 1 ? `<div class="tabs">${BV.birimler.map(x => `<button class="${x.id === b.id ? 'on' : ''}" data-bact="sec" data-id="${x.id}">${bEsc(x.ad)}</button>`).join('')}</div>` : '';
+  const yukle = `<div class="panel stack"><h4 style="margin:0">Dosya yükle</h4>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <label class="f" style="flex:1 1 240px">Dosya (en çok ${BV.maxMb} MB)<input type="file" id="bDosya"></label>
+      <label class="f">Etiket (zorunlu)<select id="bEtiket" style="width:auto"><option value="">Seçin…</option>${b.etiket.map(e => `<option>${bEsc(e)}</option>`).join('')}</select></label>
+      ${b.duzeyli && b.yonetici ? `<label class="f">Düzey<select id="bLv" style="width:auto"><option value="">Seçin…</option><option>Ortak</option>${BV.duzeyler.map(l => `<option>${l}</option>`).join('')}</select></label>` : ''}
+      ${b.yonetici ? '<label class="ck small"><input type="checkbox" id="bBildir" checked> Bildirim e-postası gönder</label>' : ''}
+      <button class="btn" data-bact="yukle">Yükle</button></div>
+    ${b.duzeyli && !b.yonetici ? `<p class="small muted" style="margin:0">Yüklediğiniz dosyayı ${bEsc(b.lv)} düzeyindeki üyeler ve yönetim görür. "Ortak" (bütün düzeyler) yapmayı yalnız yönetim seçebilir.</p>` : ''}</div>`;
+  const ek = b.yonetici ? `<details class="panel"><summary><b>Üyeler</b> <span class="small muted">(${b.uyeler.length})</span></summary><ul>${b.uyeler.map(u => `<li>${bEsc(u.ad)}${u.lv ? ' · ' + u.lv : ''} <span class="small muted">${bEsc(u.e)}</span>${u.sistemde ? '' : ' <span class="pill p-warn">sistemde değil</span>'}</li>`).join('')}</ul>
+      ${b.uyeler.some(u => !u.sistemde) && BV.tam ? '<button class="btn sm" data-bact="uyeEkle">Eksik üyeleri sisteme ekle</button>' : ''}</details>
+    <details class="panel"><summary><b>Kaldırılan dosyalar</b> <span class="small muted">(${b.kaldirilan.length}; "eski versiyonlar" klasöründe)</span></summary>${b.kaldirilan.length ? `<ul>${b.kaldirilan.map(k => `<li>${bEsc(k.ad)} · ${bEsc(k.etiket)}${k.lv ? ' · ' + bEsc(k.lv) : ''} – yükleyen ${bEsc(k.kim)}, kaldıran ${bEsc(k.kaldiran)} (${bEsc(k.tarih)})</li>`).join('')}</ul>` : '<p class="small muted">Yok.</p>'}</details>
+    <details class="panel"><summary><b>İndirme kaydı</b> <span class="small muted">(${b.indirmeler.length})</span></summary>${b.indirmeler.length ? `<div class="scroll"><table><thead><tr><th>Tarih</th><th>Kim</th><th>Dosya</th></tr></thead><tbody>${b.indirmeler.map(x => `<tr><td class="small">${bEsc(x.tarih)}</td><td>${bEsc(x.ad)}</td><td>${bEsc(x.dosya)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="small muted">Henüz indirme yok.</p>'}</details>` : '';
+  return `<div class="stack">${sekme}<div class="row" style="justify-content:space-between;align-items:baseline"><h2 style="margin:0">${bEsc(b.ad)}${b.lv ? ` <span class="pill p-acc">${bEsc(b.lv)} düzeyi</span>` : ''}</h2><span class="small muted">Dönem: ${bEsc(b.donem)}</span></div>
+    ${bMsg ? `<div class="note n-ok">${bEsc(bMsg)}</div>` : ''}${yukle}
+    <div class="panel"><h3 style="margin:0 0 8px">Dosyalar – ${bEsc(b.donem)}</h3>${bDosyaTablo(b, b.dosyalar, false)}</div>${bArsiv(b)}${bMesajlar(b)}${ek}</div>`;
+}
+async function bOnay(b, hedef) {   // yönetim bildirimi: önce alıcı listesi gösterilir, onaylanırsa gider
+  const r = await run('apiBirimIslem', ot, 'bildirimOnizle', { birim: b.id, hedef });
+  if (r.hata) { alert(r.hata); return false; }
+  if (!r.n) return true;
+  return confirm('Bildirim e-postası şu ' + r.n + ' kişiye gidecek:\n\n' + r.alicilar.join(', ') + '\n\nOnaylıyor musunuz?');
+}
+async function bIslem(islem, a) {
+  const r = await run('apiBirimIslem', ot, islem, a);
+  if (r.err === 'OTURUM') { bHata = 'Oturum sona erdi; yeniden giriş yapın.'; return render(true); }
+  if (r.hata) { alert(r.hata); return; }
+  bMsg = r.mesaj || ''; if (r.v) BV = r.v; render(true); return r;
+}
+document.addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.btaslak; if (k) bTaslak[k] = e.target.value; });
+document.addEventListener('change', async e => {
+  const el = e.target; if (!el.dataset || el.dataset.bactSel !== 'ortak' || !el.value) return;
+  const b = BV.birimler.find(x => x.id === bSec); await bIslem('ortak', { birim: b.id, id: el.dataset.id, lv: el.value });
+});
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-bact]'); if (!el || !BV) return; const d = el.dataset, b = BV.birimler.find(x => x.id === bSec) || BV.birimler[0];
+  if (d.bact === 'sec') { bSec = d.id; bMsg = ''; return render(true); }
+  try {
+    el.disabled = true;
+    if (d.bact === 'yukle') {
+      const f = $('#bDosya').files[0], et = $('#bEtiket').value, lv = $('#bLv') ? $('#bLv').value : '', bildir = !!($('#bBildir') && $('#bBildir').checked);
+      if (!f) return alert('Dosya seçin.'); if (!et) return alert('Etiket seçmek zorunludur.'); if (b.duzeyli && b.yonetici && !lv) return alert('Düzey seçin (ya da Ortak).');
+      if (f.size > BV.maxMb * 1048576) return alert('Dosya ' + BV.maxMb + ' MB\'tan büyük olamaz.');
+      if (b.yonetici && bildir && !(await bOnay(b, b.duzeyli ? lv : 'birim'))) return;
+      bMsg = 'Yükleniyor…'; render(true);
+      const b64 = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => no(fr.error); fr.readAsDataURL(f); });
+      await bIslem('yukle', { birim: b.id, ad: f.name, tur: f.type, etiket: et, lv, b64, bildir });
+    }
+    if (d.bact === 'indir') {
+      const r = await run('apiBirimIslem', ot, 'indir', { birim: b.id, id: d.id }); if (r.hata) return alert(r.hata);
+      const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u8], { type: r.tur || 'application/octet-stream' })); a.download = r.ad; document.body.appendChild(a); a.click(); a.remove();
+    }
+    if (d.bact === 'kaldir' && confirm('Dosya kaldırılsın mı? (Silinmez, "eski versiyonlar" klasörüne taşınır.)')) await bIslem('kaldir', { birim: b.id, id: d.id });
+    if (d.bact === 'ortak') await bIslem('ortak', { birim: b.id, id: d.id, lv: d.lv });
+    if (d.bact === 'mesaj') {
+      const metin = ($('#bmMetin').value || '').trim(), hedef = $('#bmHedef').value, bildir = $('#bmBildir').checked; if (!metin) return alert('Mesaj yazın.');
+      if (bildir && !(await bOnay(b, hedef))) return;
+      if (await bIslem('mesaj', { birim: b.id, hedef, metin, bildir })) delete bTaslak['yeni:' + b.id];
+    }
+    if (d.bact === 'yanit') {
+      const metin = ($('#by-' + d.id).value || '').trim(); if (!metin) return alert('Yanıt yazın.');
+      const kime = $('#bk-' + d.id) ? $('#bk-' + d.id).value : '', bildir = !!($('#bb-' + d.id) && $('#bb-' + d.id).checked);
+      if (b.yonetici && bildir && !(await bOnay(b, kime ? 'hoca:' + kime : (b.mesajlar.find(m => m.id === d.id) || {}).hedefKod || 'birim'))) return;
+      if (await bIslem('yanit', { birim: b.id, ust: d.id, metin, kime, bildir })) delete bTaslak['y:' + d.id];
+    }
+    if (d.bact === 'uyeEkle') { const r = await run('apiYonetimIslem', ot, 'birimUyeEkle', {}); bMsg = r.mesaj || ''; await birimYukle(); }
+  } catch (err) { hataGoster(err); }
+  finally { el.disabled = false; }
+});
+</script>
+
+<script>
 const URL0 = $('#app').dataset.url;
 let dzSec = null;   /* düzey tablosunda açık hücre: 'satır|sütun' */
 let ot = store.sget('yon'), V = null, tab = 'canli', mesaj = '', gmesaj = '', dsv = '', tik = 0, sonAcik = null, bekleyenCizim = false;
 function acikSay() { return V && V.msj ? V.msj.filter(m => m.durum === 'acik').length : 0; }
 function bip(acil) { try { const c = new (window.AudioContext || window.webkitAudioContext)(); [0, 0.25, acil ? 0.5 : null].filter(x => x != null).forEach(t0 => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = acil ? 880 : 660; o.connect(g); g.connect(c.destination); g.gain.setValueAtTime(0.2, c.currentTime + t0); g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + t0 + 0.2); o.start(c.currentTime + t0); o.stop(c.currentTime + t0 + 0.22); }); } catch (e) { } }
 document.addEventListener('input', e => { if (e.target.id === 'dsaat') dsv = e.target.value; });
-function vGiris() { return `<form class="panel login stack"><h2>Yönetim girişi</h2><label class="f">Yönetim şifresi<input id="pw" type="password" required></label>${gmesaj ? `<div class="note n-bad">${esc(gmesaj)}</div>` : ''}<button class="btn" type="submit">Giriş</button></form>`; }
+/* Kişisel yönetim girişi (17.11.2026): kurumsal e-posta + kendi şifresi; ilk girişte geçici şifre = ortak yönetim şifresi */
+let BEN = null, yg = { asama: 'giris', onay: null, ad: '', e: '' };
+function vGiris() {
+  const hm = gmesaj ? `<div class="note n-bad">${esc(gmesaj)}</div>` : '';
+  if (yg.asama === 'yeni') return `<form class="panel login stack" data-f="yyeni"><h2>Yönetim şifrenizi belirleyin</h2><p class="small muted">${esc(yg.ad)} · ilk giriş. En az 8 karakter; ortak şifreden farklı olmalı.</p>
+    <label class="f">Yeni şifre<input id="p1" type="password" autocomplete="new-password" required></label><label class="f">Yeni şifre (tekrar)<input id="p2" type="password" autocomplete="new-password" required></label>${hm}<button class="btn" type="submit">Şifreyi kaydet ve devam et</button></form>`;
+  return `<form class="panel login stack" data-f="ygiris"><h2>Yönetim girişi</h2>
+    <label class="f">Kurumsal e-posta<input id="ye" type="email" autocomplete="username" placeholder="…@anadolu.edu.tr" value="${esc(store.get('yonE') || '')}" required></label>
+    <label class="f">Şifre<input id="pw" type="password" autocomplete="current-password" required></label>${hm}<button class="btn" type="submit">Giriş</button>
+    <p class="small muted">İlk girişte şifre yerine ortak yönetim şifresini yazın; ardından kendi şifrenizi belirlersiniz.</p></form>`;
+}
+function vYonKul() {
+  const L = V.yonKul || [];
+  return `<div class="panel stack"><h3 style="margin:0">Yönetim kullanıcıları</h3><p class="small muted">Her yönetici kurumsal e-postası ve kendi şifresiyle girer; kayıtta adı görünür. Sıfırlanan kişi ilk girişte geçici şifre olarak ortak yönetim şifresini yazar.</p>
+    <div class="scroll"><table><thead><tr><th>Ad</th><th>E-posta</th><th>Yetki</th><th>Şifre</th><th>Son giriş</th><th></th></tr></thead><tbody>${L.map(u => `<tr><td><b>${esc(u.ad)}</b>${u.ad === BEN ? ' <span class="pill p-acc">siz</span>' : ''}</td><td class="mono">${esc(u.e)}</td><td>${esc(u.rol)}</td>
+      <td>${u.sifre ? '<span class="pill p-ok">Belirlendi</span>' : '<span class="pill p-warn">İlk giriş bekleniyor</span>'}${u.kilit ? ' <span class="pill p-bad">Kilitli</span>' : ''}</td><td class="small">${esc(u.son || '—')}</td>
+      <td>${u.ad !== BEN && u.sifre ? `<button class="btn sm ghost" data-act="yonSifirla" data-e="${esc(u.e)}">Şifre sıfırla</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
+    ${BEN && BEN !== 'yönetim' ? `<details><summary class="small"><b>Şifremi değiştir</b></summary><div class="row" style="gap:8px;flex-wrap:wrap;margin-top:8px"><input id="ks0" type="password" placeholder="Mevcut şifre" autocomplete="current-password"><input id="ks1" type="password" placeholder="Yeni şifre (en az 8)" autocomplete="new-password"><input id="ks2" type="password" placeholder="Yeni şifre (tekrar)" autocomplete="new-password"><button class="btn sm" data-act="kendiSifre">Değiştir</button></div></details>` : ''}</div>`;
+}
 function vCanli() {
   const head = `<tr><th>Jüri</th>${V.slotlar.map((s, i) => `<th>${s}${i === V.slotlar.length - 1 ? ' y' : ''}</th>`).join('')}</tr>`;
   const rows = V.tablo.map(j => `<tr><td><b>${esc(j.ad)}</b><br><span class="muted">${esc(j.room)} · ${j.hocalar.map(esc).join(', ')}</span>${j.kapali ? `<br><span class="pill p-mut">${j.kapali}'den itibaren kapandı</span>` : ''}</td>${j.hucre.map(h => `<td>${h.cips.length ? h.cips.map(c => `<span class="chip ${c.c}" title="${esc(c.ad)}">${esc(c.t)}</span>`).join('') : (h.kapali ? '<span class="chip cl">kapalı</span>' : '')}</td>`).join('')}</tr>`).join('');
@@ -329,7 +470,7 @@ function vCanli() {
     <p class="small muted" style="margin-top:6px">Mavi: sınavda/sırada · yeşil: SINAV BİTTİ · kırmızı: gelmedi · kesikli: aktarıldı ya da jüri kapandı.</p></div>
     <div class="panel lists">${L('Eş bekleyen', V.bekleyen)}${L('Aktarılan', V.aktarilan)}${L('Geç kalan – bekliyor (en az geç kalan üstte)', V.gec)}${L('Geç kaldı – sınava alınamadı', V.alinamadi)}</div>
     ${(V.unutulan || []).length ? `<div class="panel" style="border:2px solid var(--bad,#c62828)"><h3>Unutulan işlemler</h3><ul>${V.unutulan.map(u => `<li><b>${esc(u.ad)}</b> – ${esc(u.neden)}<div class="row" style="margin:4px 0 8px"><button class="btn sm" data-act="hatirlat" data-jid="${esc(u.jid)}" data-neden="${esc(u.neden)}">Jüriye hatırlat</button>${u.h.map(h => `<button class="btn sm ghost" data-act="yerine" data-id="${esc(h.id)}">${esc(h.ad)} yerine işlem</button>`).join('')}</div></li>`).join('')}</ul></div>` : ''}
-    ${V.uyarilar.length ? `<div class="panel"><h3>Not uyarıları</h3><ul>${V.uyarilar.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}</div>`;
+    ${V.uyarilar.length ? `<div class="panel"><h3>Not uyarıları</h3><ul>${V.uyarilar.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}${vEslesme(true)}</div>`;
 }
 function vUyari() {
   if (!V) return '';
@@ -400,9 +541,11 @@ function vAnket() {
     return `<div class="panel"><h3>${esc(a.ad)} anketi</h3><div class="scroll"><table class="ozet"><thead><tr><th>Madde</th>${a.gruplar.map(g => `<th>${esc(g.ad)}<br><span class="muted">n=${g.n}</span></th>`).join('')}</tr></thead><tbody>
       ${a.madde.map((m, i) => `<tr><td class="m">${i + 1}. ${esc(m)}</td>${a.gruplar.map(g => { const y = g.yuzde[i]; return `<td><div class="bar3"><i class="a" style="width:${y[0]}%"></i><i class="b" style="width:${y[1]}%"></i><i class="c" style="width:${y[2]}%"></i></div><span class="small">%${y[0]} · %${y[1]} · %${y[2]}</span></td>`; }).join('')}</tr>`).join('')}
       <tr><td class="m">${esc(a.sorunAd)} (Evet)</td>${a.gruplar.map(g => `<td>${g.sorun} kişi</td>`).join('')}</tr></tbody></table></div></div>`; };
-  return `<div class="stack"><p class="small muted">Yüzdeler: katılıyorum · kısmen katılıyorum · katılmıyorum. Yazılı görüşler tablo dosyasındaki "Anket Yazıları" sayfasındadır; isim yalnızca kişi izin verdiyse yazılır. Excel'e aktarmak için menü: Sınav Sistemi › Anket raporu.</p>${blok('O')}${blok('S')}${blok('W')}</div>`;
+  return `<div class="stack"><p class="small muted">Yüzdeler: katılıyorum · kısmen katılıyorum · katılmıyorum. Yazılı görüşler tablo dosyasındaki "Anket Yazıları" sayfasındadır; isim yalnızca kişi izin verdiyse yazılır.</p>
+   <div class="row" style="gap:8px;flex-wrap:wrap"><b class="small">Excel indir:</b><button class="btn sm ghost" data-act="ankXls" data-v="Öğrenci (speaking)">Öğrenci anketi</button><button class="btn sm ghost" data-act="ankXls" data-v="Hoca (speaking)">Hoca (speaking)</button><button class="btn sm ghost" data-act="ankXls" data-v="Hoca (writing)">Hoca (writing)</button><button class="btn sm" data-act="ankXls" data-v="">Hepsi</button></div>${blok('O')}${blok('S')}${blok('W')}</div>`;
 }
-function vHocalar() {
+function vHocalar() { return vYonKul() + vHocaListe(); }
+function vHocaListe() {
   const ilk = V.hocalar.filter(h => h.ilk).length;
   return `<div class="panel"><h3>Hocalar ve şifreler · ilk giriş yapan ${ilk} / ${V.hocalar.length}</h3><p class="small muted">Şifreler tuzlu özet olarak saklanır; kimse göremez. Geçici şifre, hoca ilk girişini yapana kadar görünür.</p>
    ${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}
@@ -412,12 +555,65 @@ function vHocalar() {
 function vWriting() {
   return `<div class="panel"><h3>Writing zarfları</h3><div class="scroll"><table><thead><tr><th>Sınıf</th><th>First</th><th>Second</th><th>Kesinleşen</th></tr></thead><tbody>${V.zarflar.map(z => `<tr><td><b>${esc(z.cls)}</b></td><td>${esc(z.f)} ${z.fDone ? '✓' : ''}</td><td>${esc(z.s)} ${z.sDone ? '✓' : ''}</td><td class="mono">${z.kesin} / ${z.toplam}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
+/** Eşleşmeler (madde 4): canlı durumda önceki / şimdiki / sonraki oturum; "Tüm eşleşmeler" sekmesinde hepsi. */
+function vEslesme(kisa) {
+  const E = (V.eslesmeler || []).filter(e => !kisa || Math.abs(e.k - Math.max(0, V.simdiK)) <= 1);
+  const ks = [...new Set(E.map(e => e.k))];
+  const satir = e => `<tr><td>${esc(e.lv)} · Jüri ${e.juri}</td><td>${esc(e.derslik)}</td><td>${e.uyeler.map(u => `${esc(u.ad)} <span class="small muted mono">${esc(u.no)} · ${esc(u.cls)}</span> ${u.qr ? '✓' : '<span class="small muted">bekleniyor</span>'}${u.src ? ` <span class="small" style="color:#a35a00">(${esc(u.src)})</span>` : ''}`).join('<br>')}</td><td>${e.bitti ? 'bitti' : ''}</td></tr>`;
+  return `<div class="panel stack"><h3 style="margin:0">${kisa ? 'Eşleşmeler – önceki, şimdiki ve sonraki oturum' : 'Tüm eşleşmeler'}</h3>${ks.map(k => { const L = E.filter(e => e.k === k);
+    return `<h4 style="margin:6px 0 0">Oturum ${esc(L[0].saat)} (${L.length} grup)</h4><table class="tt"><thead><tr><th>Jüri</th><th>Derslik</th><th>Öğrenciler</th><th></th></tr></thead><tbody>${L.map(satir).join('')}</tbody></table>`; }).join('') || '<p class="small muted">Bugün eşleşme yok.</p>'}</div>`;
+}
+/* ---------- Anket Excel (madde 6) ve sınav arşivi (madde 7): dosyalar tarayıcıda üretilir ---------- */
+let arsVeri = null, arsSec = { g: '', lv: '' };
+function xlsxIndir(ad, sayfalar) {
+  if (typeof XLSX === 'undefined') { alert('Excel kütüphanesi yüklenemedi; sayfayı yenileyin.'); return; }
+  const wb = XLSX.utils.book_new(); sayfalar.forEach(([n, rows]) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), n.slice(0, 31))); XLSX.writeFile(wb, ad);
+}
+function anketExcel(v, hangi) {
+  const A = v.anket.slice(1), Y = v.yazi.slice(1), tur = hangi;   // 'Öğrenci (speaking)' | 'Hoca (speaking)' | 'Hoca (writing)' | '' (hepsi)
+  const sec = A.filter(r => !tur || r[1] === tur), ys = Y.filter(r => !tur || r[1] === tur), ol = v.olcek;
+  const turler = tur ? [tur] : Object.keys(v.madde);
+  const soru = [['Anket', 'Madde', ol[0], ol[1], ol[2], 'n', '%' + ol[0]]]; turler.forEach(t => (v.madde[t] || []).forEach((m, i) => { const L = sec.filter(r => r[1] === t).map(r => r[4 + i]).filter(String);
+    const c = ol.map(o => L.filter(x => x === o).length); soru.push([t, m, c[0], c[1], c[2], L.length, L.length ? Math.round(c[0] / L.length * 100) : '']); }));
+  const grup = (col, ad) => { const out = [['Anket', ad, 'Madde', ol[0], ol[1], ol[2], 'n']]; turler.forEach(t => { const R = sec.filter(r => r[1] === t); [...new Set(R.map(r => r[col]))].sort().forEach(gv => (v.madde[t] || []).forEach((m, i) => {
+    const L = R.filter(r => r[col] === gv).map(r => r[4 + i]).filter(String); out.push([t, gv, m].concat(ol.map(o => L.filter(x => x === o).length), [L.length])); })); }); return out; };
+  xlsxIndir('Anket raporu' + (tur ? ' – ' + tur : '') + '.xlsx', [['Soru bazında', soru], ['Düzey bazında', grup(2, 'Düzey')], ['Jüri bazında', grup(3, 'Jüri')], ['Yazılı görüşler', [v.yazi[0] || []].concat(ys)], ['Ham veri', [v.anket[0] || []].concat(sec)]]);
+}
+function arsivExcel(v) { xlsxIndir(v.baslik + '.xlsx', [['Özet', [['Alan', 'Değer']].concat(v.ozet)], ['Oturumlar', v.oturum], ['Jüriler', v.juri], ['Öğrenci listesi', v.ogr], ['Olay kaydı', v.olay]]); }
+function arsivWord(v) {
+  const tb = rows => `<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-size:10pt">${rows.map((r, i) => `<tr>${r.map(c => i ? `<td>${esc(String(c))}</td>` : `<th style="background:#ddd">${esc(String(c))}</th>`).join('')}</tr>`).join('')}</table>`;
+  const html = `<html><head><meta charset="utf-8"><title>${esc(v.baslik)}</title></head><body style="font-family:Calibri,Arial"><h1 style="font-size:16pt">${esc(v.baslik)}</h1><h2 style="font-size:13pt">Özet</h2>${tb([['Alan', 'Değer']].concat(v.ozet))}<h2 style="font-size:13pt">Oturumlar</h2>${tb(v.oturum)}<h2 style="font-size:13pt">Jüriler</h2>${tb(v.juri)}</body></html>`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + html], { type: 'application/msword' })); a.download = v.baslik + '.doc'; document.body.appendChild(a); a.click(); a.remove();
+}
+function vArsiv() {
+  const G = V.gunlerKul || [];
+  const sec = `<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><select id="arsGun">${G.map(g => `<option value="${g.g}" ${String(arsSec.g) === String(g.g) ? 'selected' : ''}>${esc(g.ad)} (${esc(g.lv)})</option>`).join('')}</select>
+    <select id="arsLv"><option value="">Bütün düzeyler</option>${['D1', 'D2', 'C', 'B', 'A'].map(l => `<option ${arsSec.lv === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <button class="btn sm" data-act="arsivGoster">Göster</button><button class="btn sm ghost" data-act="arsivXls">Excel indir</button><button class="btn sm ghost" data-act="arsivDoc">Word indir</button></div>`;
+  const oz = arsVeri && !arsVeri.hata ? `<h3 style="margin:8px 0 0">${esc(arsVeri.baslik)}</h3><div class="grid g3">${arsVeri.ozet.map(([k, v]) => `<div class="panel"><div class="small muted">${esc(k)}</div><div style="font-size:22px;font-weight:700">${esc(String(v))}</div></div>`).join('')}</div>` : arsVeri && arsVeri.hata ? `<p class="note n-bad">${esc(arsVeri.hata)}</p>` : '';
+  return `<div class="panel stack"><h3 style="margin:0">Sınav arşivi</h3><p class="small muted">Sınav günü ve düzey seçin; özet ekranda görünür, Excel (Özet, Oturumlar, Jüriler, Öğrenci listesi, Olay kaydı) ve Word rapor indirilebilir.</p>${sec}${oz}</div>`;
+}
+const KUL_AD = { 1: '1 · Portal notlu, canlı eşleştirme', 2: '2 · Kâğıt notlu, planlı eşleştirme (sabit plan)', 3: '3 · Kâğıt notlu, canlı eşleştirme' };
+function vAyar() {
+  const G = V.gunlerKul || [];
+  return `<div class="panel stack"><h3 style="margin:0">Kullanım şekli (gün bazında)</h3><p class="small muted">Her sınav günü için kullanım şekli o günün ilk QR okutmasına kadar değiştirilebilir. 2. kullanım için sabit plan yüklenmiş olmalıdır.</p>
+  ${G.map(g => `<div class="row" style="gap:10px;align-items:center;flex-wrap:wrap"><b>${esc(g.ad)}</b><span class="small muted">${esc(g.lv)}</span>
+    <select id="kul-${g.g}" ${g.kilit ? 'disabled' : ''}>${[1, 2, 3].map(k => `<option value="${k}" ${g.kul === k ? 'selected' : ''} ${k === 2 && !g.sabit ? 'disabled' : ''}>${KUL_AD[k]}</option>`).join('')}</select>
+    ${g.kilit ? '<span class="pill p-mut">İlk okutma yapıldı – kilitli</span>' : `<button class="btn sm" data-act="kul" data-g="${g.g}">Kaydet</button>`}${g.secili ? '' : ' <span class="small muted">(seçilmedi: eski ayara göre)</span>'}</div>`).join('') || '<p>Sınav günü tanımlı değil.</p>'}
+  ${V.doluluk ? `<h3 style="margin:8px 0 0">Kayıt doluluğu</h3><p class="${V.doluluk.yuzde >= 80 ? 'note n-hl' : 'small muted'}">Sınav durumu kaydı: ${V.doluluk.kb} KB / ${V.doluluk.sinirKb} KB (%${V.doluluk.yuzde}).${V.doluluk.yuzde >= 80 ? ' Sınıra yaklaşıldı: gün sonu arşivi alınmalı.' : ''}</p>` : ''}
+  ${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}</div>`;
+}
 function render() {
   if (!V) { $('#ust').hidden = true; $('#app').innerHTML = vGiris(); return; }
-  $('#ust').hidden = false;
+  $('#ust').hidden = false; const bb = document.getElementById('benAd'); if (bb) bb.textContent = BEN && BEN !== 'yönetim' ? BEN : '';
+  if (V.rol && V.rol !== 'tam') { if (!BV && !bYukleniyor && !bHata) birimYukle(); $('#app').innerHTML = vBirim(); return; }   // İnci Aras: yalnız Öğrenci Birimi
   const ac = acikSay();
-  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['araclar', 'Araçlar'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['kayit', 'Kayıt']];
+  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['araclar', 'Araçlar'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['eslesme', 'Tüm eşleşmeler'], ['birim', 'Birim çalışmaları'], ['arsiv', 'Sınav arşivi'], ['ayar', 'Sınav ayarları'], ['kayit', 'Kayıt']];
   let b = tab === 'canli' ? vCanli() : tab === 'mesaj' ? vMesaj() : tab === 'yayin' ? vYayin() : tab === 'anket' ? vAnket() : tab === 'araclar' ? vAraclar() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
+    : tab === 'ayar' ? vAyar()
+    : tab === 'eslesme' ? vEslesme(false)
+    : tab === 'arsiv' ? vArsiv()
+    : tab === 'birim' ? vBirim()
     : tab === 'sonuc' ? `<div class="panel stack"><p>Sınıf not listeleri tablo dosyasındaki "Speaking Sonuçları" ve "Writing Sonuçları" sayfalarına yazılır; oradan Excel olarak indirilir. Önce MehDer'in bilgisayarına kaydedilir, onaydan sonra AnaSİS hocalarına gönderilir.</p><div><button class="btn" data-act="sonuc">Sonuç sayfalarını şimdi yaz</button></div>${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}</div>`
     : `<div class="panel log">${V.kayit.map(x => `<div>${esc(x)}</div>`).join('')}</div>`;
   $('#app').innerHTML = `<div class="tabs">${T.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>` + vUyari() + b;
@@ -425,7 +621,7 @@ function render() {
 async function yukle(zorla) {
   if (!ot) { V = null; return render(); }
   try {
-    const r = await run('apiYonetim', ot); if (r.err) { ot = null; store.sdel('yon'); V = null; } else V = r;
+    const r = await run('apiYonetim', ot); if (r.err) { ot = null; store.sdel('yon'); V = null; } else { V = r; BEN = r.ben || BEN; }
     const ac = acikSay(); if (sonAcik != null && ac > sonAcik) bip((V.msj || []).some(m => m.durum === 'acik' && m.acil)); sonAcik = ac;
     if (!zorla && (editing() || basili)) { bekleyenCizim = true; return; } render();
   } catch (e) { hataGoster(e); }
@@ -434,15 +630,23 @@ document.addEventListener('focusout', () => setTimeout(() => { if (bekleyenCizim
 /* Cevap taslakları yeniden çizimde kaybolmasın */
 const cvTaslak = {};
 document.addEventListener('input', e => { if (e.target.id && e.target.id.startsWith('cv-')) cvTaslak[e.target.id.slice(3)] = e.target.value; });
-document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''; try { const r = await run('apiYonetimGiris', $('#pw').value); if (r.err) gmesaj = r.err; else { ot = r.oturum; store.sset('yon', ot); } } catch (err) { hataGoster(err); } yukle(true); });
+document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''; const f = e.target.dataset.f;
+  try {
+    let r;
+    if (f === 'yyeni') r = await run('apiYonetimSifreBelirle', yg.e, yg.onay, $('#p1').value, $('#p2').value);
+    else { yg.e = $('#ye').value.trim().toLowerCase(); store.set('yonE', yg.e); r = await run('apiYonetimGiris', yg.e, $('#pw').value); }
+    if (r.err) gmesaj = r.err; else if (r.yeniSifre) { yg.asama = 'yeni'; yg.onay = r.onay; yg.ad = r.ad; } else { yg.asama = 'giris'; ot = r.oturum; BEN = r.ad || null; store.sset('yon', ot); }
+  } catch (err) { hataGoster(err); } yukle(true); });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return; const d = b.dataset;
-  if (d.act === 'tab') { tab = d.v; mesaj = ''; return render(); }
+  if (d.act === 'tab') { tab = d.v; mesaj = ''; if (tab === 'birim') { bMsg = ''; birimYukle(); } return render(); }
   if (d.act === 'dz') { dzSec = (d.v && dzSec !== d.v) ? d.v : null; return render(); }
-  if (d.act === 'cikis') { await run('apiCikis', ot).catch(() => { }); store.sdel('yon'); ot = null; V = null; return render(); }
+  if (d.act === 'cikis') { await run('apiCikis', ot).catch(() => { }); store.sdel('yon'); ot = null; V = null; BV = null; bHata = ''; return render(); }
   b.disabled = true;
   try {
     if (d.act === 'sifirla') { const ep = confirm('Yeni geçici şifre hocaya e-postayla da gönderilsin mi? (İptal: yalnızca ekranda göster)'); const r = await run('apiYonetimIslem', ot, 'sifirla', { id: d.id, eposta: ep }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
+    if (d.act === 'yonSifirla') { if (confirm('Bu yöneticinin şifresi sıfırlansın mı? İlk girişte ortak yönetim şifresiyle yeni şifre belirleyecek.')) { const r = await run('apiYonetimIslem', ot, 'yonSifirla', { e: d.e }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
+    if (d.act === 'kendiSifre') { const r = await run('apiYonetimIslem', ot, 'kendiSifre', { eski: $('#ks0').value, p1: $('#ks1').value, p2: $('#ks2').value }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
     if (d.act === 'hiz') { const r = await run('apiYonetimIslem', ot, 'saat', { hiz: Number(d.v) }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
     if (d.act === 'saatAyarla') { const s = ($('#dsaat') || {}).value || ''; if (/^\d{1,2}:\d{2}$/.test(s)) { const r = await run('apiYonetimIslem', ot, 'saat', { saat: s }); mesaj = r.mesaj || ''; if (r.v) V = r.v; } }
     if (d.act === 'gun') { const r = await run('apiYonetimIslem', ot, 'gun', { gun: Number(d.v) }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
@@ -455,6 +659,11 @@ document.addEventListener('click', async e => {
     if (d.act === 'aJmesaj') { if (!arac.jmetin.trim()) mesaj = 'Mesajı yazın.'; else { const r = await yi('jmesaj', { jids: arac.jsec, hepsi: arac.jhepsi, metin: arac.jmetin }); if (/gönderildi/.test(r.mesaj || '')) arac.jmetin = ''; } }
     if (d.act === 'aTv') { const r = await yi('tv', { metin: arac.tvmetin, dk: Number(arac.tvdk) || 10 }); if (/görünecek/.test(r.mesaj || '')) arac.tvmetin = ''; }
     if (d.act === 'aTvKaldir') await yi('tvkaldir', {});
+    if (d.act === 'ankXls') { const r = await run('apiYonetimIslem', ot, 'anketVeri', {}); anketExcel(r.veri, d.v); }
+    if (d.act === 'arsivGoster' || d.act === 'arsivXls' || d.act === 'arsivDoc') { const g = $('#arsGun').value, lv = $('#arsLv').value; arsSec = { g, lv };
+      const r = await run('apiYonetimIslem', ot, 'arsivVeri', { gun: Number(g), lv }); arsVeri = r.veri;
+      if (d.act === 'arsivXls') arsivExcel(arsVeri); if (d.act === 'arsivDoc') arsivWord(arsVeri); }
+    if (d.act === 'kul') { const sel = document.getElementById('kul-' + d.g); if (sel) await yi('kullanim', { gun: Number(d.g), kul: Number(sel.value) }); }
     if (d.act === 'hatirlat') await yi('jmesaj', { jids: [d.jid], hepsi: false, metin: 'Hatırlatma: ' + d.neden + '. Lütfen jüri ekranınızdan ilgili düğmeye basın (Geldi / Gelmedi / SINAV BİTTİ).' });
     if (d.act === 'aOmesaj') { const tek = arac.ohedef === 'tek'; if ((tek && !arac.ono) || !arac.ometin.trim()) mesaj = tek ? 'Öğrenci no ve mesajı yazın.' : 'Mesajı yazın.'; else if (!tek && !confirm('Bu mesaj seçtiğiniz gruptaki bütün öğrencilere gidecek. Gönderilsin mi?')) { } else { const r = await yi('omesaj', { no: arac.ono, metin: arac.ometin, hedef: arac.ohedef }); if (/gönderildi/.test(r.mesaj || '')) { arac.ometin = ''; } } }
     if (d.act === 'cozuldu') { const r = await run('apiYonetimIslem', ot, 'cozuldu', { id: d.id }); if (r.v) V = r.v; mesaj = ''; }
@@ -463,7 +672,7 @@ document.addEventListener('click', async e => {
   } catch (err) { hataGoster(err); }
   render();
 });
-setInterval(() => { tik++; if (V && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);
+setInterval(() => { tik++; if (V && (!V.rol || V.rol === 'tam') && tab !== 'birim' && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);   // birim ekranı canlı değil (dosya seçimi kaybolmasın)
 yukle();
 </script>
 </body></html>
