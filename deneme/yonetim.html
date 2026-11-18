@@ -420,6 +420,242 @@ document.addEventListener('click', async e => {
 </script>
 
 <script>
+/* SinavUI.html – Yönetim › "Yeni sınav" ve "Derslikler" sekmeleri (12 tablosu Q–R; 18.11.2026).
+   Yonetim.html'in global `ot`, `render()` ve `tab` değişkenlerini kullanır. Ayarlar tarayıcıda taslak olarak tutulur; "Kaydet" ile sunucuya gider. */
+let SG = null, SD = null, SX = null, sAd = '', sDegisti = false, sOner = new Set(), sMsg = '', sHata = '', sOnizle = null, sAra = '', DH = null, dhDegisti = false, sYuk = false;
+const sE = esc, sDet = {};
+const det = (k, vars) => `data-sdet="${k}" ${(k in sDet ? sDet[k] : vars) ? 'open' : ''}`;
+document.addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.sdet; if (k) sDet[k] = e.target.open; }, true);
+async function sinavYukle() {
+  sYuk = true;
+  try { const r = await run('apiSinav', ot); if (r.err) { sHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; SG = null; } else { SG = r; sHata = ''; if (!dhDegisti) DH = JSON.parse(JSON.stringify(r.havuz)); } }
+  catch (e) { sHata = (e && e.message) || String(e); }
+  sYuk = false; render();
+}
+function sAcik(s) { SD = s; SX = JSON.parse(JSON.stringify(s.cfg)); sAd = s.ad; sDegisti = false; sOner = new Set(); }
+async function sIslem(islem, a) {
+  const r = await run('apiSinavIslem', ot, islem, a);
+  if (r.err) { sHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; render(); return null; }
+  if (r.hata) { alert(r.hata); return null; }
+  if (r.turler) { SG = r; if (!dhDegisti) DH = JSON.parse(JSON.stringify(r.havuz)); }
+  if (r.sinav) sAcik(r.sinav);
+  sMsg = r.mesaj || ''; render(); return r;
+}
+/* ---------- yollar ---------- */
+function sGet(p) { return p.split('.').reduce((o, k) => o == null ? o : o[k], SX); }
+function sSet(p, v) { const k = p.split('.'), son = k.pop(); const o = k.reduce((o, x) => o[x] = o[x] == null ? (/^\d+$/.test(x) ? [] : {}) : o[x], SX); o[son] = v; sDegisti = true; }
+const BOL_AD = { cs: 'Çoktan seçmeli test', yazma: 'Yazma', konusma: 'Konuşma', grading: 'Writing grading' };
+const KUL3 = { 1: '1 · Portal, canlı', 2: '2 · Kâğıt, planlı', 3: '3 · Kâğıt, canlı' };
+const trT = t => /^\d{4}-\d{2}-\d{2}$/.test(t || '') ? t.slice(8, 10) + '.' + t.slice(5, 7) + '.' + t.slice(0, 4) : '';
+const DUR = { taslak: ['p-warn', 'Taslak'], hazir: ['p-acc', 'Hazır – Claude\'a gönderildi'], kuruldu: ['p-ok', 'Kuruldu'] };
+const inp = (p, tip, ek) => `<input type="${tip || 'text'}" data-sx="${p}" value="${sE(sGet(p) == null ? '' : sGet(p))}" ${ek || ''}>`;
+const ck = (p, etiket) => `<label class="ck small"><input type="checkbox" data-sxb="${p}" ${sGet(p) ? 'checked' : ''}> ${etiket}</label>`;
+const sel = (p, ops, ek) => `<select data-sx="${p}" ${ek || ''} style="width:auto">${ops.map(([v, t]) => `<option value="${sE(v)}" ${String(sGet(p)) === String(v) ? 'selected' : ''}>${sE(t)}</option>`).join('')}</select>`;
+function dOps(secili, bos) {
+  const L = (DH || SG.havuz).filter(d => d.durum === 'aktif' || d.ad === secili);
+  return `<option value="">${bos || '—'}</option>` + L.map(d => `<option value="${sE(d.ad)}" ${d.ad === secili ? 'selected' : ''}>${sE(d.ad)}${d.skap || d.kap ? ' (' + (d.skap || d.kap) + ')' : ''}${d.durum !== 'aktif' ? ' – pasif' : ''}</option>`).join('');
+}
+/* ---------- sınav listesi ---------- */
+function vSinavListe() {
+  const L = SG.sinavlar;
+  return `<div class="panel stack"><h3 style="margin:0">Sınavlar</h3>
+    ${L.length ? `<div class="scroll"><table><thead><tr><th>Sınav</th><th>Tür</th><th>İlk bölüm</th><th>Kalan</th><th>Durum</th><th>Son değişiklik</th><th></th></tr></thead><tbody>${L.map(s => `<tr class="${SD && SD.id === s.id ? 'sec' : ''}"><td><b>${sE(s.ad)}</b></td><td>${sE(s.tur)}</td><td>${sE(s.ilk || '—')}</td>
+      <td>${s.kalan == null ? '—' : s.kalan >= 0 ? s.kalan + ' gün' : 'geçti'}</td><td><span class="pill ${(DUR[s.durum] || ['p-mut'])[0]}">${sE((DUR[s.durum] || ['', s.durum])[1])}</span></td><td class="small">${sE(s.guncelleme || '')} · ${sE(s.guncelleyen || '')}</td>
+      <td><button class="btn sm" data-sact="ac" data-id="${sE(s.id)}">Aç</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="small muted">Henüz sınav oluşturulmadı.</p>'}
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">Yeni sınav türü<select id="sYeniTur" style="width:auto"><option value="">Seçin…</option>${SG.turler.map(t => `<option value="${t.id}">${sE(t.ad)}</option>`).join('')}</select></label>
+      <label class="f" style="flex:1 1 260px">Sınav adı (boş bırakılırsa dönem + tür)<input id="sYeniAd" placeholder="ör. 2026-27 Güz Erasmus Sınavı"></label><button class="btn" data-sact="yeni">Oluştur</button></div></div>`;
+}
+/* ---------- bölümler ---------- */
+function vBolumler() {
+  const h = SD.hazirlik, lvKutu = (p, L) => SG.duzeyler.filter(l => !h || SX.duzeyler.includes(l)).map(l => `<label class="ck small"><input type="checkbox" data-sxlv="${p}" data-v="${l}" ${L.includes(l) ? 'checked' : ''}> ${l}</label>`).join(' ');
+  const blok = b => { const B = SX.bolum[b];
+    return `<div class="panel stack" style="gap:6px"><div class="row" style="justify-content:space-between;align-items:center"><b>${BOL_AD[b]}</b>${ck('bolum.' + b + '.var', 'Bu sınavda var')}</div>
+      ${B.var ? `<div class="scroll"><table class="tt"><thead><tr><th>#</th><th>Tarih</th><th>Başlama</th>${h ? '<th>Düzeyler</th>' : ''}${b === 'konusma' ? '<th>Kullanım şekli</th>' : ''}<th></th></tr></thead><tbody>
+      ${B.oturum.map((o, i) => `<tr><td>${i + 1}</td><td>${inp(`bolum.${b}.oturum.${i}.tarih`, 'date')}</td><td>${inp(`bolum.${b}.oturum.${i}.saat`, 'time', 'style="width:110px"')}</td>
+        ${h ? `<td>${lvKutu(`bolum.${b}.oturum.${i}.lv`, o.lv)}</td>` : ''}${b === 'konusma' ? `<td>${sel(`bolum.${b}.oturum.${i}.kul`, [1, 2, 3].map(k => [k, KUL3[k]]))}</td>` : ''}
+        <td>${B.oturum.length > 1 ? `<button class="btn sm ghost" data-sact="otSil" data-b="${b}" data-i="${i}">Sil</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      <div><button class="btn sm ghost" data-sact="otEkle" data-b="${b}">+ ${b === 'konusma' ? 'Gün' : 'Oturum'} ekle</button></div>` : ''}</div>`; };
+  const G = SX.bolum.grading;
+  return `<details class="panel" ${det('bol', true)}><summary><b>1. Sınav bilgileri, bölümler ve tarihler</b></summary><div class="stack" style="margin-top:8px">
+    <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end"><label class="f" style="flex:1 1 320px">Sınav adı<input id="sAd" value="${sE(sAd)}"></label>
+      <div class="small"><b>Tür:</b> ${sE(SD.turAd)} · <b>Sorumlu birim:</b> ${sE(SD.birim)} · <b>Dönem:</b> ${sE(SD.donem)}</div></div>
+    ${h ? `<div><b class="small">Sınava giren düzeyler:</b> ${SG.duzeyler.map(l => `<label class="ck small"><input type="checkbox" data-sxlv="duzeyler" data-v="${l}" ${SX.duzeyler.includes(l) ? 'checked' : ''}> ${l}</label>`).join(' ')}</div>` : '<p class="small muted" style="margin:0">Yeterlik Sınav Birimi sınavı: tek düzey; sınıf ve "kendi hocası" kuralları yok.</p>'}
+    <div class="grid g2">${['cs', 'yazma', 'konusma'].map(blok).join('')}
+    <div class="panel stack" style="gap:6px"><div class="row" style="justify-content:space-between;align-items:center"><b>Writing grading</b>${ck('bolum.grading.var', 'Bu sınavda var')}</div>
+      ${G.var ? `<div class="row" style="gap:8px;flex-wrap:wrap"><label class="f">First grader son gün${inp('bolum.grading.first', 'date')}</label><label class="f">Second grader son gün${inp('bolum.grading.second', 'date')}</label><label class="f">3./4. grader son gün${inp('bolum.grading.ucuncu', 'date')}</label></div>
+      <p class="small muted" style="margin:0">Saatsiz; teslim tarihleriyle. 3. ve 4. grader kuralı S19'a göre (bir bentte fark ≥ 2).</p>` : ''}</div></div></div></details>`;
+}
+function vKurallar() {
+  const h = SD.hazirlik, K = 'konusma.';
+  return `<details class="panel" ${det('kon', false)}><summary><b>2. Konuşma kuralları</b></summary><div class="stack" style="margin-top:8px">
+    ${h ? `<div class="row" style="gap:12px;flex-wrap:wrap"><label class="f">Kendi hocasının jürisi${sel(K + 'kendiHoca', [['asla', 'Asla'], ['bos', 'Yalnız başka boş jüri yoksa'], ['fark', 'Fark etmez']])}</label>
+      <label class="f">Eş seçimi${sel(K + 'es', [['ayni', 'Aynı sınıf öncelikli'], ['fark', 'Fark etmez'], ['farkli', 'Farklı sınıf öncelikli']])}</label></div>` : '<p class="small muted" style="margin:0">Hoca ve sınıf kuralları bu sınavda uygulanmaz; aday o oturumdaki başka bir adayla eşleşir.</p>'}
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Yedek slotta jüri: son oturumdaki her … öğrenciye 1${inp(K + 'yedekOran', 'number', 'min="5" max="60" style="width:80px"')}</label>${ck(K + 'erken', 'Erken girmeye gönüllü öğrenci düğmesi')}${ck(K + 'anket', 'Anket açık')}</div>
+    <p class="small muted" style="margin:0">Sabit kurallar (S11, S18): 5–15 dk geç kalan boş jüri bekler; 15 dk'dan fazla geç kalan alınmaz; son çağrı 15:45; son oturuma geç kalan 16:00 yedek slotta girer.</p></div></details>
+  <details class="panel" ${det('yaz', false)}><summary><b>3. Yazma, çoktan seçmeli test ve grading kuralları</b></summary><div class="stack" style="margin-top:8px">
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Dinleme başlangıcı (sınav başından … dk sonra)${inp('yazma.dinlemeDk', 'number', 'min="0" max="60" style="width:80px"')}</label>
+      ${ck('yazma.gozetmenFirst', 'Gözetmen = first grader')}${h ? ck('yazma.secondSali', 'Second grader = sınıfın Salı öğleden sonra hocası') : ''}${ck('yazma.capraz', 'Çapraz eşleşme (iki grader aynı çiftte iki kez buluşmaz)')}</div>
+    <p class="small muted" style="margin:0">Bentler 1–5 (Content, Organization, Grammar, Lexical). Bir bentte fark ≥ 2 → yalnız o bent 3. grader'a; özel durum uyuşmazlığında uyarılı 3. grader, gerekirse 4. grader. Kâğıtlar taranır; grader yalnız rastgele kâğıt numarasını görür.</p></div></details>`;
+}
+function vGorev() {
+  const G = 'gorev.', T = SX.gorev.tercih || {}, muaf = new Set(SD.muaf || []), q = sAra.trim().toLocaleLowerCase('tr');
+  const L = SG.hocalar.filter(x => !q || x.ad.toLocaleLowerCase('tr').includes(q) || (T[x.id] && T[x.id].t !== 'normal'));
+  const n = Object.keys(T).filter(k => T[k] && T[k].t && T[k].t !== 'normal').length;
+  return `<details class="panel" ${det('gor', false)}><summary><b>4. Görev kuralları ve hoca tercihleri</b> <span class="small muted">(${n} hoca için tercih girildi)</span></summary><div class="stack" style="margin-top:8px">
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Günlük görev sınırı${inp(G + 'gunluk', 'number', 'min="1" max="6" style="width:70px"')}</label>
+      <label class="f">Yedek oranı (%)${inp(G + 'yedekYuzde', 'number', 'min="0" max="30" style="width:70px"')}</label><label class="f">En az yedek${inp(G + 'yedekMin', 'number', 'min="0" max="30" style="width:70px"')}</label>${SD.hazirlik ? ck(G + 'juriAyniDuzey', 'Jüride aynı düzeyin hocaları') : ''}</div>
+    <p class="small muted" style="margin:0">${sE(SD.birim)} üyeleri bu sınavda görev almaz (kendiliğinden). Görev dağılımını Claude yapar.</p>
+    <input id="sAra" placeholder="Hoca ara…" value="${sE(sAra)}" style="max-width:260px">
+    <div class="scroll" style="max-height:420px"><table><thead><tr><th>Hoca</th><th>Tercih</th><th>Not (ör. hangi görev / hangi gün)</th></tr></thead><tbody>
+    ${L.map(x => { const t = (T[x.id] || {}).t || 'normal';
+      return `<tr><td>${sE(x.ad)}${muaf.has(x.e) ? ' <span class="pill p-mut">birim üyesi – görev yok</span>' : ''}</td><td><select data-sxt="${x.id}" style="width:auto">${Object.entries(SG.tercihAd).map(([k, v]) => `<option value="${k}" ${k === t ? 'selected' : ''}>${sE(v)}</option>`).join('')}</select></td>
+        <td>${t === 'normal' ? '' : `<input data-sxtn="${x.id}" value="${sE((T[x.id] || {}).not || '')}" maxlength="120" style="width:100%">`}</td></tr>`; }).join('')}</tbody></table></div></div></details>`;
+}
+/* ---------- öğrenci / aday listesi ---------- */
+const SUT = { no: /^(öğrenci\s*no|ogrenci\s*no|öğrenci\s*numarası|numara|no|student\s*(no|id|number))$/i, ad: /^(ad\s*soyad|adı\s*soyadı|ad-soyad|adsoyad|ad\s*ve\s*soyad|name|full\s*name)$/i,
+  adi: /^(ad|adı|isim)$/i, soyadi: /^(soyad|soyadı)$/i, cls: /^(sınıf|sinif|şube|sube|grup|class)$/i, lv: /^(düzey|duzey|kur|seviye|level)$/i };
+function listeOku(rows) {
+  let bi = -1, kol = {};
+  for (let i = 0; i < Math.min(rows.length, 15) && bi < 0; i++) { const r = rows[i].map(x => String(x == null ? '' : x).trim()); const k = {};
+    r.forEach((h, j) => { for (const [ad, re] of Object.entries(SUT)) if (k[ad] == null && re.test(h)) k[ad] = j; });
+    if (k.no != null && (k.ad != null || k.adi != null)) { bi = i; kol = k; } }
+  if (bi < 0) return { hata: 'Başlık satırı bulunamadı. Sütunlardan biri "Öğrenci No", biri "Ad Soyad" (ya da "Ad" + "Soyad") olmalı.' };
+  const L = rows.slice(bi + 1).map(r => ({ no: String(r[kol.no] == null ? '' : r[kol.no]).trim(), ad: kol.ad != null ? String(r[kol.ad] || '') : (String(r[kol.adi] || '') + ' ' + String(kol.soyadi != null ? r[kol.soyadi] || '' : '')).trim(),
+    cls: kol.cls != null ? String(r[kol.cls] || '') : '', lv: kol.lv != null ? String(r[kol.lv] || '') : '' })).filter(x => x.no || x.ad);
+  return { L, kol: Object.keys(kol).join(', ') };
+}
+function vListe() {
+  const h = SD.hazirlik, F = SD.fark;
+  const lv = Object.entries(SD.lvSay || {}).map(([k, v]) => h ? `${k}: ${v}` : `${v} aday`).join(' · ');
+  const tb = (b, L, c) => L.length ? `<details><summary class="small"><b>${b} (${L.length})</b></summary><div class="scroll" style="max-height:240px"><table class="ozet"><thead><tr>${c.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${L.map(r => `<tr>${r.map(x => `<td>${sE(x)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>` : `<div class="small muted">${b}: yok</div>`;
+  return `<details class="panel" ${det('lst', !SD.adaySay)}><summary><b>5. ${h ? 'Öğrenci listesi (AnaSİS)' : 'Aday listesi'}</b> <span class="small muted">${SD.adaySay ? '(' + lv + ')' : '(yüklenmedi)'}</span></summary><div class="stack" style="margin-top:8px">
+    <p class="small muted" style="margin:0">${h ? 'AnaSİS\'ten alınan Excel: Öğrenci No, Ad Soyad, Sınıf (Düzey yoksa sınıftan çıkarılır). Yeni liste öncekinin yerine geçer; önceki listeyle karşılaştırılır.' : 'Birimin ya da Erasmus ofisinin gönderdiği Excel: Öğrenci No ve Ad Soyad. Sınıf ve düzey yok.'}</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">Excel ya da CSV<input type="file" id="sListe" accept=".xlsx,.xls,.csv"></label></div>
+    ${sOnizle ? (sOnizle.hata ? `<div class="note n-bad">${sE(sOnizle.hata)}</div>` : `<div class="note n-hl">${sE(sOnizle.dosya)}: <b>${sOnizle.L.length}</b> satır okundu (sütunlar: ${sE(sOnizle.kol)}). İlk satırlar: ${sOnizle.L.slice(0, 3).map(x => sE(x.no + ' ' + x.ad + (x.cls ? ' ' + x.cls : ''))).join(' · ')}
+      <div style="margin-top:6px"><button class="btn sm" data-sact="listeKaydet">Listeyi kaydet</button> <button class="btn sm ghost" data-sact="listeVazgec">Vazgeç</button></div></div>`) : ''}
+    ${(SD.listeHata || []).length ? `<div class="note n-bad small">${SD.listeHata.map(sE).join('<br>')}</div>` : ''}
+    ${F ? `<div class="panel stack" style="gap:4px"><b class="small">Önceki listeyle karşılaştırma – ${sE(F.kaynak)} (${F.onceki} kişi)</b>${tb('Yeni gelen', F.yeni, ['No', 'Ad Soyad', 'Sınıf'])}${tb('Listede olmayan (ayrılan)', F.ayrilan, ['No', 'Ad Soyad', 'Sınıf'])}${h ? tb('Sınıf değiştiren', F.sinif, ['No', 'Ad Soyad', 'Eski sınıf', 'Yeni sınıf']) : ''}</div>` : ''}</div></details>`;
+}
+/* ---------- derslikler ---------- */
+function vSinavDerslik() {
+  const h = SD.hazirlik, D = SX.derslik, oner = k => sOner.has(k) ? 'style="background:#fff3b0"' : '';
+  const yz = b => { const B = SX.bolum[b]; if (!B.var) return '';
+    return B.oturum.map((o, i) => { const e = (D[b][i] = D[b][i] || { atama: {}, secili: [] }), bas = `${BOL_AD[b]}${B.oturum.length > 1 ? ' ' + (i + 1) + '. oturum' : ''} · ${trT(o.tarih) || 'tarih yok'} ${sE(o.saat || '')}`;
+      if (h) { const G = ((SD.gruplar || {})[b] || [])[i] || [];
+        return `<div class="panel stack" style="gap:4px"><b class="small">${bas}</b>${G.length ? `<div class="scroll"><table class="tt"><thead><tr><th>Grup (sınıf)</th><th>Öğrenci</th><th>Derslik</th></tr></thead><tbody>${G.map(g => `<tr><td>${sE(g.g)}</td><td>${g.n}</td>
+          <td><select data-sxd="${b}.${i}.${sE(g.g)}" ${oner(b + ':' + i + ':' + g.g)} style="width:auto">${dOps(e.atama[g.g])}</select></td></tr>`).join('')}</tbody></table></div>` : '<p class="small muted" style="margin:0">Grup yok (liste yüklenmedi ya da oturumda düzey seçilmedi). Kaydettikten sonra gruplar görünür.</p>'}</div>`; }
+      const dg = ((SD.dagilim || {})[b] || [])[i];
+      return `<div class="panel stack" style="gap:4px" ${oner(b + ':' + i)}><b class="small">${bas}</b><div class="row" style="gap:6px;flex-wrap:wrap">${(DH || SG.havuz).filter(d => d.durum === 'aktif').map(d => `<label class="ck small" style="border:1px solid var(--line);border-radius:8px;padding:4px 8px"><input type="checkbox" data-sxsec="${b}.${i}" data-v="${sE(d.ad)}" ${e.secili.includes(d.ad) ? 'checked' : ''}> ${sE(d.ad)} <span class="muted">${d.skap || d.kap || '?'}</span></label>`).join('')}</div>
+        ${dg && dg.dagilim.length ? `<table class="tt"><thead><tr><th>Derslik</th><th>Kapasite</th><th>Aday</th><th>İlk – son (${D.sira === 'alfabe' ? 'ad' : 'no'})</th></tr></thead><tbody>${dg.dagilim.map(x => `<tr><td>${sE(x.derslik)}</td><td>${x.kap || '?'}</td><td>${x.n}</td><td class="small">${sE(x.ilk)} – ${sE(x.son)}</td></tr>`).join('')}</tbody></table>${dg.kalan ? `<div class="note n-bad small">${dg.kalan} aday yerleşmedi.</div>` : ''}` : ''}</div>`; }).join(''); };
+  const kon = () => { const B = SX.bolum.konusma; if (!B.var) return '';
+    return B.oturum.map((o, i) => (h ? o.lv : ['Tek']).map(lv => { let K = D.konusma.find(x => x.oi === i && x.lv === lv); const j = K ? D.konusma.indexOf(K) : -1;
+      const bas = `Konuşma · ${trT(o.tarih) || 'tarih yok'}${h ? ' · ' + lv + ' düzeyi' : ''}`;
+      if (!K) return `<div class="panel row" style="gap:8px;align-items:center"><b class="small">${bas}</b><button class="btn sm ghost" data-sact="konEkle" data-oi="${i}" data-lv="${lv}">Jürileri gir</button></div>`;
+      const n = Number(K.juri) || 0;
+      return `<div class="panel stack" style="gap:6px"><b class="small">${bas}</b><div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <label class="f">Jüri sayısı<input type="number" min="0" max="40" data-sxj="${j}" value="${n}" style="width:70px"></label>
+        <label class="f">Bekleme alanı${inp(`derslik.konusma.${j}.bekleme`)}</label><label class="f">Kayıt masası${inp(`derslik.konusma.${j}.kayit`)}</label><label class="f">TV yeri${inp(`derslik.konusma.${j}.tv`)}</label></div>
+        ${n ? `<div class="row" style="gap:6px;flex-wrap:wrap">${Array.from({ length: n }, (x, k) => `<label class="small">Jüri ${k + 1} <select data-sx="derslik.konusma.${j}.derslikler.${k}" ${oner('k:' + i + ':' + lv + ':' + k)} style="width:auto">${dOps(K.derslikler[k])}</select></label>`).join('')}</div>` : ''}</div>`; }).join('')).join(''); };
+  return `<details class="panel" ${det('drs', true)}><summary><b>6. Derslikler</b></summary><div class="stack" style="margin-top:8px">
+    <p class="small muted" style="margin:0">${h ? 'Her yazma/ÇS oturumunda sınıf → derslik. ' : 'Yazma/ÇS için kullanılacak derslikleri seçin; adaylar sınav kapasitesine göre bölünür. '}Konuşmada gün ve düzey başına jüri sayısı ve jüri dersliği. Derslik havuzu "Derslikler" sekmesinde. Boş bıraktıklarınızı "Boşları öner" doldurur (sarı); kontrol edip kaydedin.</p>
+    ${h ? '' : `<label class="f" style="max-width:300px">Adayların dersliklere sırası${sel('derslik.sira', [['no', 'Öğrenci numarasına göre'], ['alfabe', 'Ada göre (alfabe)']])}</label>`}
+    ${yz('cs')}${yz('yazma')}${kon()}<div><button class="btn sm" data-sact="oner">Boşları öner</button></div></div></details>`;
+}
+function vSinavDetay() {
+  const K = SD.kontrol, kil = SD.durum === 'hazir' || SD.durum === 'kuruldu';
+  const adim = `<div class="row" style="gap:6px;flex-wrap:wrap">${SD.adimlar.map(([ad, tamam, sonra]) => `<span class="pill ${tamam ? 'p-ok' : sonra ? 'p-mut' : 'p-warn'}">${tamam ? '✓' : sonra ? '·' : '!'} ${sE(ad)}</span>`).join('')}</div>`;
+  const kont = `${K.hata.length ? `<div class="note n-bad small"><b>Giderilmesi gereken (${K.hata.length}):</b><br>${K.hata.map(sE).join('<br>')}</div>` : '<div class="note n-ok small">Eksik yok.</div>'}${K.uyari.length ? `<div class="note n-hl small"><b>Uyarılar (${K.uyari.length}):</b><br>${K.uyari.map(sE).join('<br>')}</div>` : ''}`;
+  const alt = kil ? `<div class="note n-hl">Bu sınav ${sE(SD.hazirT || '')} tarihinde ${sE(SD.hazirKim || '')} tarafından "hazır" olarak Claude'a gönderildi; ayarlar kilitli.</div>
+      <div class="row" style="gap:8px">${SD.durum === 'hazir' ? '<button class="btn ghost" data-sact="geriAc">Düzenlemeye geri aç</button>' : ''}</div>`
+    : `<div class="row" style="gap:8px;flex-wrap:wrap;position:sticky;bottom:0;background:var(--bg,#fff);padding:8px 0;border-top:1px solid var(--line)"><button class="btn" data-sact="kaydet">Kaydet</button>
+      <button class="btn ${K.hata.length ? 'ghost' : ''}" data-sact="hazir">Sınav hazır, Claude'a gönder</button>${sDegisti ? '<span class="pill p-warn" style="align-self:center">Kaydedilmemiş değişiklik var</span>' : ''}
+      <span style="flex:1"></span><button class="btn sm ghost bad" data-sact="iptal">Listeden kaldır</button></div>`;
+  return `<div class="stack"><div class="row" style="justify-content:space-between;align-items:baseline;flex-wrap:wrap"><h2 style="margin:0">${sE(SD.ad)} <span class="pill ${(DUR[SD.durum] || ['p-mut'])[0]}">${sE((DUR[SD.durum] || ['', SD.durum])[1])}</span></h2>
+      <span class="small muted">${SD.kalan != null ? (SD.kalan >= 0 ? 'İlk bölüme ' + SD.kalan + ' gün (' + sE(SD.ilk) + ')' : 'İlk bölüm geçti') : 'Tarih girilmedi'} · son değişiklik ${sE(SD.guncelleme || '')} ${sE(SD.guncelleyen || '')}</span></div>
+    <div class="panel stack" style="gap:6px"><b class="small">Sınav kontrol listesi</b>${adim}${kont}</div>
+    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}
+    <details class="panel" ${det('gec', false)}><summary><b>Geçmiş</b></summary><ul class="small">${SD.gecmis.map(g => `<li>${sE(g[0])} · ${sE(g[1])} – ${sE(g[2])}</li>`).join('')}</ul></details></div>`;
+}
+function vSinav() {
+  if (sHata) return `<div class="note n-bad">${sE(sHata)}</div>`;
+  if (!SG) return '<div class="panel muted">Yükleniyor…</div>';
+  return `<div class="stack">${sMsg ? `<div class="note n-ok" style="white-space:pre-wrap">${sE(sMsg)}</div>` : ''}${vSinavListe()}${SD ? vSinavDetay() : '<p class="small muted">Bir sınavı açın ya da yeni sınav oluşturun. Ayarlar tamamlanınca "Sınav hazır, Claude\'a gönder" deyin; görev dağılımı, kurulum ve dosyaları Claude hazırlar ve onayınıza sunar.</p>'}</div>`;
+}
+/* ---------- Derslikler sekmesi (havuz) ---------- */
+function vDerslik() {
+  if (sHata) return `<div class="note n-bad">${sE(sHata)}</div>`;
+  if (!SG || !DH) return '<div class="panel muted">Yükleniyor…</div>';
+  const f = (i, k, tip, w) => `<input ${tip ? 'type="' + tip + '"' : ''} data-dh="${i}.${k}" value="${sE(DH[i][k] == null || (tip === 'number' && !DH[i][k]) ? '' : DH[i][k])}" style="width:${w || 90}px">`;
+  return `<div class="stack">${sMsg ? `<div class="note n-ok">${sE(sMsg)}</div>` : ''}<div class="panel stack"><h3 style="margin:0">Derslik havuzu <span class="small muted">(${DH.filter(d => d.durum === 'aktif').length} aktif)</span></h3>
+    <p class="small muted" style="margin:0">Bütün sınavlarda bu listeden seçilir. Normal kapasite: ders düzeni; sınav kapasitesi: sınav düzeni (boşsa normal kapasite kullanılır). "Ders yapan sınıf": hazırlık sınavlarında öneri için (her sınıf kendi dersliğinde). Pasif derslik önerilmez; kayıt silinmez.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">İçe aktar (00-Derslik Listeleri.xlsx: Derslik, Sınıf, Öğrenci sayısı)<input type="file" id="dhDosya" accept=".xlsx,.xls,.csv"></label><button class="btn sm ghost" data-sact="dhIce">İçe aktar</button></div>
+    <div class="scroll"><table><thead><tr><th>Derslik</th><th>Bina</th><th>Kat</th><th>Normal kap.</th><th>Sınav kap.</th><th>Ders yapan sınıf</th><th>Not</th><th>Durum</th></tr></thead><tbody>
+    ${DH.map((d, i) => `<tr class="${d.durum === 'aktif' ? '' : 'muted'}"><td>${f(i, 'ad', '', 80)}</td><td>${f(i, 'bina', '', 110)}</td><td>${f(i, 'kat', '', 60)}</td><td>${f(i, 'kap', 'number', 70)}</td><td>${f(i, 'skap', 'number', 70)}</td><td>${f(i, 'sinif', '', 120)}</td><td>${f(i, 'not', '', 160)}</td>
+      <td><select data-dh="${i}.durum" style="width:auto"><option value="aktif" ${d.durum === 'aktif' ? 'selected' : ''}>aktif</option><option value="pasif" ${d.durum !== 'aktif' ? 'selected' : ''}>pasif</option></select></td></tr>`).join('')}</tbody></table></div>
+    <div class="row" style="gap:8px"><button class="btn sm ghost" data-sact="dhEkle">+ Derslik ekle</button><button class="btn" data-sact="dhKaydet">Kaydet</button>${dhDegisti ? '<span class="pill p-warn" style="align-self:center">Kaydedilmemiş değişiklik var</span>' : ''}</div></div></div>`;
+}
+/* ---------- olaylar ---------- */
+function excelSatirlari(f) {
+  return new Promise((ok, no) => { if (typeof XLSX === 'undefined') return no(new Error('Excel kütüphanesi yüklenemedi; sayfayı yenileyin.'));
+    const fr = new FileReader(); fr.onload = () => { try { const wb = XLSX.read(new Uint8Array(fr.result), { type: 'array' }); const ws = wb.Sheets[wb.SheetNames[0]]; ok(XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' })); } catch (e) { no(e); } };
+    fr.onerror = () => no(fr.error); fr.readAsArrayBuffer(f); });
+}
+document.addEventListener('input', e => {
+  const d = e.target.dataset || {};
+  if (d.sx) { const v = e.target.type === 'number' ? Number(e.target.value) : e.target.value; sSet(d.sx, /\.kul$/.test(d.sx) ? Number(v) : v); }
+  if (e.target.id === 'sAd') { sAd = e.target.value; sDegisti = true; }
+  if (d.sxtn) { SX.gorev.tercih[d.sxtn] = Object.assign(SX.gorev.tercih[d.sxtn] || {}, { not: e.target.value }); sDegisti = true; }
+  if (d.dh) { const [i, k] = d.dh.split('.'); DH[i][k] = e.target.type === 'number' ? Number(e.target.value) : e.target.value; dhDegisti = true; }
+  if (e.target.id === 'sAra') { sAra = e.target.value; const p = e.target.selectionStart; render(); const el = document.getElementById('sAra'); if (el) { el.focus(); el.setSelectionRange(p, p); } }
+});
+document.addEventListener('change', async e => {
+  const el = e.target, d = el.dataset || {};
+  if (d.sxb) { sSet(d.sxb, el.checked); return render(); }
+  if (d.sxlv) { const L = sGet(d.sxlv) || []; sSet(d.sxlv, el.checked ? L.concat([d.v]).filter((x, i, A) => A.indexOf(x) === i) : L.filter(x => x !== d.v)); return render(); }
+  if (d.sxt) { if (el.value === 'normal') delete SX.gorev.tercih[d.sxt]; else SX.gorev.tercih[d.sxt] = Object.assign(SX.gorev.tercih[d.sxt] || {}, { t: el.value }); sDegisti = true; return render(); }
+  if (d.sxd) { const [b, i, ...g] = d.sxd.split('.'), gk = g.join('.'), D = SX.derslik[b][i] = SX.derslik[b][i] || { atama: {}, secili: [] }; if (el.value) D.atama[gk] = el.value; else delete D.atama[gk]; sOner.delete(b + ':' + i + ':' + gk); sDegisti = true; return; }
+  if (d.sxsec) { const [b, i] = d.sxsec.split('.'), D = SX.derslik[b][i] = SX.derslik[b][i] || { atama: {}, secili: [] }; D.secili = el.checked ? D.secili.concat([d.v]) : D.secili.filter(x => x !== d.v); sDegisti = true; return; }
+  if (d.sxj != null && d.sxj !== '') { const K = SX.derslik.konusma[Number(d.sxj)]; K.juri = Math.max(0, Math.min(40, Number(el.value) || 0)); K.derslikler = (K.derslikler || []).slice(0, K.juri); sDegisti = true; return render(); }
+  if (d.sx && el.tagName === 'SELECT') { if (/\.derslikler\.\d+$/.test(d.sx)) { const m = d.sx.match(/konusma\.(\d+)\.derslikler\.(\d+)/), K = SX.derslik.konusma[m[1]]; sOner.delete('k:' + K.oi + ':' + K.lv + ':' + m[2]); } return; }
+  if (el.id === 'sListe' && el.files[0]) { try { const f = el.files[0], r = listeOku(await excelSatirlari(f)); sOnizle = Object.assign(r, { dosya: f.name }); } catch (err) { sOnizle = { hata: 'Dosya okunamadı: ' + (err.message || err) }; } render(); }
+});
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-sact]'); if (!el) return; const d = el.dataset;
+  const degisirse = () => !sDegisti || confirm('Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?');
+  try {
+    el.disabled = true;
+    if (d.sact === 'ac') { if (!degisirse()) return; sMsg = ''; sOnizle = null; await sIslem('ac', { id: d.id }); }
+    if (d.sact === 'yeni') { const t = $('#sYeniTur').value; if (!t) return alert('Sınav türü seçin.'); if (!degisirse()) return; sOnizle = null; await sIslem('yeni', { tur: t, ad: $('#sYeniAd').value }); }
+    if (d.sact === 'otEkle') { const B = SX.bolum[d.b], son = B.oturum[B.oturum.length - 1] || {}; B.oturum.push(Object.assign({ tarih: '', saat: son.saat || '', lv: SD.hazirlik ? [] : ['Tek'] }, d.b === 'konusma' ? { kul: son.kul || 1 } : {})); sDegisti = true; render(); }
+    if (d.sact === 'otSil') { const i = Number(d.i); SX.bolum[d.b].oturum.splice(i, 1); if (SX.derslik[d.b] && d.b !== 'konusma') SX.derslik[d.b].splice(i, 1);
+      if (d.b === 'konusma') SX.derslik.konusma = SX.derslik.konusma.filter(k => k.oi !== i).map(k => (k.oi > i ? Object.assign(k, { oi: k.oi - 1 }) : k)); sDegisti = true; render(); }
+    if (d.sact === 'konEkle') { SX.derslik.konusma.push({ oi: Number(d.oi), lv: d.lv, juri: 0, derslikler: [], bekleme: '', kayit: '', tv: '' }); sDegisti = true; render(); }
+    if (d.sact === 'kaydet') await sIslem('kaydet', { id: SD.id, ad: sAd, cfg: SX });
+    if (d.sact === 'oner') { const r = await run('apiSinavIslem', ot, 'oner', { id: SD.id, cfg: SX }); if (r.hata) return alert(r.hata); SX = r.cfg; sOner = new Set(r.onerilen); if (r.onerilen.length) sDegisti = true; sMsg = r.mesaj; render(); }
+    if (d.sact === 'hazir') { if (sDegisti && !(await sIslem('kaydet', { id: SD.id, ad: sAd, cfg: SX }))) return;
+      if (SD.kontrol.hata.length) return alert('Önce şu eksikler giderilmeli:\n- ' + SD.kontrol.hata.slice(0, 15).join('\n- '));
+      if (confirm((SD.kontrol.uyari.length ? SD.kontrol.uyari.length + ' uyarı var (kontrol listesinde). ' : '') + 'Sınav "hazır" olarak Claude\'a gönderilsin mi? Ayarlar kilitlenir; gerekirse "Düzenlemeye geri aç" ile açılır.')) await sIslem('hazir', { id: SD.id }); }
+    if (d.sact === 'geriAc' && confirm('Sınav yeniden düzenlemeye açılsın mı?')) await sIslem('hazir', { id: SD.id, geri: true });
+    if (d.sact === 'iptal' && confirm('"' + SD.ad + '" listeden kaldırılsın mı? (Kayıt silinmez; tabloda "iptal" olarak durur.)')) { if (await sIslem('iptal', { id: SD.id })) { SD = null; SX = null; sDegisti = false; render(); } }
+    if (d.sact === 'listeKaydet') { const o = sOnizle; if (sDegisti && !(await sIslem('kaydet', { id: SD.id, ad: sAd, cfg: SX, not: 'Ayarlar kaydedildi (liste yüklemeden önce).' }))) return;
+      if (await sIslem('liste', { id: SD.id, satirlar: o.L, dosya: o.dosya })) { sOnizle = null; render(); } }
+    if (d.sact === 'listeVazgec') { sOnizle = null; render(); }
+    if (d.sact === 'dhEkle') { DH.push({ ad: '', bina: '', kat: '', kap: 0, skap: 0, sinif: '', not: '', durum: 'aktif' }); dhDegisti = true; render(); }
+    if (d.sact === 'dhKaydet') { const r = await run('apiSinavIslem', ot, 'derslikKaydet', { liste: DH.filter(x => String(x.ad || '').trim()) }); if (r.hata) return alert(r.hata); dhDegisti = false; SG = r; DH = JSON.parse(JSON.stringify(r.havuz)); sMsg = r.mesaj; render(); }
+    if (d.sact === 'dhIce') { const f = $('#dhDosya').files[0]; if (!f) return alert('Dosya seçin.'); if (dhDegisti && !confirm('Kaydedilmemiş derslik değişiklikleri kaybolacak. Devam edilsin mi?')) return;
+      const rows = await excelSatirlari(f); let bi = rows.findIndex(r => r.some(x => /^derslik$/i.test(String(x).trim())));
+      if (bi < 0) return alert('"Derslik" başlıklı sütun bulunamadı.');
+      const H = rows[bi].map(x => String(x).trim().toLocaleLowerCase('tr')), k = re => H.findIndex(h => re.test(h));
+      const kd = k(/^derslik$/), ks = k(/^sınıf$/), kk = k(/kapasite|öğrenci sayısı/), kb = k(/^bina$/), kt = k(/^kat$/);
+      const sat = rows.slice(bi + 1).map(r => ({ ad: r[kd], sinif: ks >= 0 ? r[ks] : '', kap: kk >= 0 ? r[kk] : '', bina: kb >= 0 ? r[kb] : '', kat: kt >= 0 ? r[kt] : '' })).filter(x => String(x.ad || '').trim());
+      const r = await run('apiSinavIslem', ot, 'derslikIceAktar', { satirlar: sat }); if (r.hata) return alert(r.hata); dhDegisti = false; SG = r; DH = JSON.parse(JSON.stringify(r.havuz)); sMsg = r.mesaj; render(); }
+  } catch (err) { hataGoster(err); }
+  finally { el.disabled = false; }
+});
+window.addEventListener('beforeunload', e => { if ((sDegisti || dhDegisti) && (tab === 'sinav' || tab === 'derslik')) { e.preventDefault(); e.returnValue = ''; } });
+</script>
+
+<script>
 const URL0 = $('#app').dataset.url;
 let dzSec = null;   /* düzey tablosunda açık hücre: 'satır|sütun' */
 let ot = store.sget('yon'), V = null, tab = 'canli', mesaj = '', gmesaj = '', dsv = '', tik = 0, sonAcik = null, bekleyenCizim = false;
@@ -608,12 +844,14 @@ function render() {
   $('#ust').hidden = false; const bb = document.getElementById('benAd'); if (bb) bb.textContent = BEN && BEN !== 'yönetim' ? BEN : '';
   if (V.rol && V.rol !== 'tam') { if (!BV && !bYukleniyor && !bHata) birimYukle(); $('#app').innerHTML = vBirim(); return; }   // İnci Aras: yalnız Öğrenci Birimi
   const ac = acikSay();
-  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['araclar', 'Araçlar'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['eslesme', 'Tüm eşleşmeler'], ['birim', 'Birim çalışmaları'], ['arsiv', 'Sınav arşivi'], ['ayar', 'Sınav ayarları'], ['kayit', 'Kayıt']];
+  const T = [['canli', 'Canlı durum'], ['mesaj', 'Mesajlar' + (ac ? ` (${ac})` : '')], ['yayin', 'Not yayımı'], ['anket', 'Anket'], ['hocalar', 'Hocalar ve şifreler'], ['araclar', 'Araçlar'], ['writing', 'Writing'], ['sonuc', 'Sonuçlar'], ['eslesme', 'Tüm eşleşmeler'], ['birim', 'Birim çalışmaları'], ['arsiv', 'Sınav arşivi'], ['sinav', 'Yeni sınav'], ['ayar', 'Sınav ayarları'], ['derslik', 'Derslikler'], ['kayit', 'Kayıt']];
   let b = tab === 'canli' ? vCanli() : tab === 'mesaj' ? vMesaj() : tab === 'yayin' ? vYayin() : tab === 'anket' ? vAnket() : tab === 'araclar' ? vAraclar() : tab === 'hocalar' ? vHocalar() : tab === 'writing' ? vWriting()
     : tab === 'ayar' ? vAyar()
     : tab === 'eslesme' ? vEslesme(false)
     : tab === 'arsiv' ? vArsiv()
     : tab === 'birim' ? vBirim()
+    : tab === 'sinav' ? vSinav()
+    : tab === 'derslik' ? vDerslik()
     : tab === 'sonuc' ? `<div class="panel stack"><p>Sınıf not listeleri tablo dosyasındaki "Speaking Sonuçları" ve "Writing Sonuçları" sayfalarına yazılır; oradan Excel olarak indirilir. Önce MehDer'in bilgisayarına kaydedilir, onaydan sonra AnaSİS hocalarına gönderilir.</p><div><button class="btn" data-act="sonuc">Sonuç sayfalarını şimdi yaz</button></div>${mesaj ? `<div class="note n-ok">${esc(mesaj)}</div>` : ''}</div>`
     : `<div class="panel log">${V.kayit.map(x => `<div>${esc(x)}</div>`).join('')}</div>`;
   $('#app').innerHTML = `<div class="tabs">${T.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-act="tab" data-v="${k}">${l}</button>`).join('')}</div>` + vUyari() + b;
@@ -639,9 +877,9 @@ document.addEventListener('submit', async e => { e.preventDefault(); gmesaj = ''
   } catch (err) { hataGoster(err); } yukle(true); });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return; const d = b.dataset;
-  if (d.act === 'tab') { tab = d.v; mesaj = ''; if (tab === 'birim') { bMsg = ''; birimYukle(); } return render(); }
+  if (d.act === 'tab') { tab = d.v; mesaj = ''; if (tab === 'birim') { bMsg = ''; birimYukle(); } if (tab === 'sinav' || tab === 'derslik') { sMsg = ''; if (!sYuk) sinavYukle(); } return render(); }
   if (d.act === 'dz') { dzSec = (d.v && dzSec !== d.v) ? d.v : null; return render(); }
-  if (d.act === 'cikis') { await run('apiCikis', ot).catch(() => { }); store.sdel('yon'); ot = null; V = null; BV = null; bHata = ''; return render(); }
+  if (d.act === 'cikis') { await run('apiCikis', ot).catch(() => { }); store.sdel('yon'); ot = null; V = null; BV = null; bHata = ''; SG = null; SD = null; SX = null; DH = null; sDegisti = false; dhDegisti = false; return render(); }
   b.disabled = true;
   try {
     if (d.act === 'sifirla') { const ep = confirm('Yeni geçici şifre hocaya e-postayla da gönderilsin mi? (İptal: yalnızca ekranda göster)'); const r = await run('apiYonetimIslem', ot, 'sifirla', { id: d.id, eposta: ep }); mesaj = r.mesaj || ''; if (r.v) V = r.v; }
@@ -672,7 +910,7 @@ document.addEventListener('click', async e => {
   } catch (err) { hataGoster(err); }
   render();
 });
-setInterval(() => { tik++; if (V && (!V.rol || V.rol === 'tam') && tab !== 'birim' && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);   // birim ekranı canlı değil (dosya seçimi kaybolmasın)
+setInterval(() => { tik++; if (V && (!V.rol || V.rol === 'tam') && tab !== 'birim' && tab !== 'sinav' && tab !== 'derslik' && (V.deneme || tik % 2 === 0)) yukle(); }, 5000);   // birim ekranı canlı değil (dosya seçimi kaybolmasın)
 yukle();
 </script>
 </body></html>
