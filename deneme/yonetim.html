@@ -265,6 +265,25 @@ function editing() { const a = document.activeElement; return a && /^(INPUT|SELE
 let basili = false;
 document.addEventListener('pointerdown', () => { basili = true; }, true);
 ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => setTimeout(() => { basili = false; document.dispatchEvent(new Event('focusout')); }, 60), true));
+/* Sayfa içi onay / bilgi kutusu (tarayıcı confirm/alert yerine; Claude uygulamasının paneli bunları engelliyor – 19.11.2026). */
+function sayfaKutusu_(metin, iki, evet, hayir) {
+  return new Promise(ok => {
+    const o = document.createElement('div'); o.className = 'skutu-ort';
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    o.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:inherit;max-width:520px;width:100%;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25)">'
+      + '<div class="skutu-metin" style="white-space:pre-wrap;line-height:1.45;margin-bottom:14px"></div><div style="display:flex;gap:8px;justify-content:flex-end">'
+      + (iki ? '<button class="btn ghost" data-k="0"></button>' : '') + '<button class="btn" data-k="1"></button></div></div>';
+    o.querySelector('.skutu-metin').textContent = metin;
+    const b1 = o.querySelector('[data-k="1"]'); b1.textContent = evet || (iki ? 'Evet' : 'Tamam');
+    if (iki) o.querySelector('[data-k="0"]').textContent = hayir || 'Vazgeç';
+    const bitir = v => { document.removeEventListener('keydown', tus, true); o.remove(); ok(v); };
+    const tus = e => { if (e.key === 'Escape') { e.preventDefault(); bitir(false); } if (e.key === 'Enter') { e.preventDefault(); bitir(true); } };
+    o.addEventListener('click', e => { const k = e.target.closest && e.target.closest('[data-k]'); if (k) { e.stopPropagation(); bitir(k.dataset.k === '1'); } });
+    document.addEventListener('keydown', tus, true); document.body.appendChild(o); b1.focus();
+  });
+}
+function onayla(metin, evet, hayir) { return sayfaKutusu_(String(metin), true, evet, hayir); }
+function bilgi(metin) { return sayfaKutusu_(String(metin), false); }
 function hataGoster(e) { const m = (e && e.message) || String(e); const el = $('#hata'); if (el) { el.textContent = 'Bağlantı hatası: ' + m + ' Sayfayı yenileyin.'; el.hidden = false; } }
 
 /* Taslak notlar: HESAPLA'ya (writing'de "tamamlandı"ya) kadar yalnızca bu tarayıcıda tutulur, sonra tek seferde gönderilir. */
@@ -366,14 +385,14 @@ function vBirim() {
 }
 async function bOnay(b, hedef) {   // yönetim bildirimi: önce alıcı listesi gösterilir, onaylanırsa gider
   const r = await run('apiBirimIslem', ot, 'bildirimOnizle', { birim: b.id, hedef });
-  if (r.hata) { alert(r.hata); return false; }
+  if (r.hata) { bilgi(r.hata); return false; }
   if (!r.n) return true;
-  return confirm('Bildirim e-postası şu ' + r.n + ' kişiye gidecek:\n\n' + r.alicilar.join(', ') + '\n\nOnaylıyor musunuz?');
+  return await onayla('Bildirim e-postası şu ' + r.n + ' kişiye gidecek:\n\n' + r.alicilar.join(', ') + '\n\nOnaylıyor musunuz?');
 }
 async function bIslem(islem, a) {
   const r = await run('apiBirimIslem', ot, islem, a);
   if (r.err === 'OTURUM') { bHata = 'Oturum sona erdi; yeniden giriş yapın.'; return render(true); }
-  if (r.hata) { alert(r.hata); return; }
+  if (r.hata) { bilgi(r.hata); return; }
   bMsg = r.mesaj || ''; if (r.v) BV = r.v; render(true); return r;
 }
 document.addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.btaslak; if (k) bTaslak[k] = e.target.value; });
@@ -388,27 +407,27 @@ document.addEventListener('click', async e => {
     el.disabled = true;
     if (d.bact === 'yukle') {
       const f = $('#bDosya').files[0], et = $('#bEtiket').value, lv = $('#bLv') ? $('#bLv').value : '', bildir = !!($('#bBildir') && $('#bBildir').checked);
-      if (!f) return alert('Dosya seçin.'); if (!et) return alert('Etiket seçmek zorunludur.'); if (b.duzeyli && b.yonetici && !lv) return alert('Düzey seçin (ya da Ortak).');
-      if (f.size > BV.maxMb * 1048576) return alert('Dosya ' + BV.maxMb + ' MB\'tan büyük olamaz.');
+      if (!f) return bilgi('Dosya seçin.'); if (!et) return bilgi('Etiket seçmek zorunludur.'); if (b.duzeyli && b.yonetici && !lv) return bilgi('Düzey seçin (ya da Ortak).');
+      if (f.size > BV.maxMb * 1048576) return bilgi('Dosya ' + BV.maxMb + ' MB\'tan büyük olamaz.');
       if (b.yonetici && bildir && !(await bOnay(b, b.duzeyli ? lv : 'birim'))) return;
       bMsg = 'Yükleniyor…'; render(true);
       const b64 = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => no(fr.error); fr.readAsDataURL(f); });
       await bIslem('yukle', { birim: b.id, ad: f.name, tur: f.type, etiket: et, lv, b64, bildir });
     }
     if (d.bact === 'indir') {
-      const r = await run('apiBirimIslem', ot, 'indir', { birim: b.id, id: d.id }); if (r.hata) return alert(r.hata);
+      const r = await run('apiBirimIslem', ot, 'indir', { birim: b.id, id: d.id }); if (r.hata) return bilgi(r.hata);
       const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u8], { type: r.tur || 'application/octet-stream' })); a.download = r.ad; document.body.appendChild(a); a.click(); a.remove();
     }
-    if (d.bact === 'kaldir' && confirm('Dosya kaldırılsın mı? (Silinmez, "eski versiyonlar" klasörüne taşınır.)')) await bIslem('kaldir', { birim: b.id, id: d.id });
+    if (d.bact === 'kaldir' && await onayla('Dosya kaldırılsın mı? (Silinmez, "eski versiyonlar" klasörüne taşınır.)')) await bIslem('kaldir', { birim: b.id, id: d.id });
     if (d.bact === 'ortak') await bIslem('ortak', { birim: b.id, id: d.id, lv: d.lv });
     if (d.bact === 'mesaj') {
-      const metin = ($('#bmMetin').value || '').trim(), hedef = $('#bmHedef').value, bildir = $('#bmBildir').checked; if (!metin) return alert('Mesaj yazın.');
+      const metin = ($('#bmMetin').value || '').trim(), hedef = $('#bmHedef').value, bildir = $('#bmBildir').checked; if (!metin) return bilgi('Mesaj yazın.');
       if (bildir && !(await bOnay(b, hedef))) return;
       if (await bIslem('mesaj', { birim: b.id, hedef, metin, bildir })) delete bTaslak['yeni:' + b.id];
     }
     if (d.bact === 'yanit') {
-      const metin = ($('#by-' + d.id).value || '').trim(); if (!metin) return alert('Yanıt yazın.');
+      const metin = ($('#by-' + d.id).value || '').trim(); if (!metin) return bilgi('Yanıt yazın.');
       const kime = $('#bk-' + d.id) ? $('#bk-' + d.id).value : '', bildir = !!($('#bb-' + d.id) && $('#bb-' + d.id).checked);
       if (b.yonetici && bildir && !(await bOnay(b, kime ? 'hoca:' + kime : (b.mesajlar.find(m => m.id === d.id) || {}).hedefKod || 'birim'))) return;
       if (await bIslem('yanit', { birim: b.id, ust: d.id, metin, kime, bildir })) delete bTaslak['y:' + d.id];
@@ -437,7 +456,7 @@ async function sIslem(islem, a) {
   if (SD && ['kaydet', 'liste', 'hazir'].includes(islem) && a.rev == null) a.rev = SD.rev;
   const r = await run('apiSinavIslem', ot, islem, a);
   if (r.err) { sHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; render(); return null; }
-  if (r.hata) { alert(r.hata); return null; }
+  if (r.hata) { bilgi(r.hata); return null; }
   if (r.turler) { SG = r; if (!dhDegisti) DH = JSON.parse(JSON.stringify(r.havuz)); }
   if (r.sinav) sAcik(r.sinav);
   sMsg = r.mesaj || ''; render(); return r;
@@ -574,7 +593,7 @@ function vSinavDetay() {
   return `<div class="stack"><div class="row" style="justify-content:space-between;align-items:baseline;flex-wrap:wrap"><h2 style="margin:0">${sE(SD.ad)} <span class="pill ${(DUR[SD.durum] || ['p-mut'])[0]}">${sE((DUR[SD.durum] || ['', SD.durum])[1])}</span></h2>
       <span class="small muted">${SD.kalan != null ? (SD.kalan >= 0 ? 'İlk bölüme ' + SD.kalan + ' gün (' + sE(SD.ilk) + ')' : 'İlk bölüm geçti') : 'Tarih girilmedi'} · son değişiklik ${sE(SD.guncelleme || '')} ${sE(SD.guncelleyen || '')}</span></div>
     <div class="panel stack" style="gap:6px"><b class="small">Sınav kontrol listesi</b>${adim}${kont}</div>
-    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}${vDok()}
+    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}${vDok()}${vEposta()}
     <details class="panel" ${det('gec', false)}><summary><b>Geçmiş</b></summary><ul class="small">${SD.gecmis.map(g => `<li>${sE(g[0])} · ${sE(g[1])} – ${sE(g[2])}</li>`).join('')}</ul></details></div>`;
 }
 function vSinav() {
@@ -602,7 +621,7 @@ function dIndir(r) { const bin = atob(r.b64), u8 = new Uint8Array(bin.length); f
 async function dIslem(islem, a) {
   const r = await run('apiSinavIslem', ot, islem, Object.assign({ id: SD.id }, a));
   if (r.err) { sHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; render(); return null; }
-  if (r.hata) { alert(r.hata); return null; }
+  if (r.hata) { bilgi(r.hata); return null; }
   if (r.dok) { SD.dok = r.dok; const ids = new Set(r.dok.guncel.map(x => x.id)); dSec = new Set([...dSec].filter(x => ids.has(x))); }
   if (r.dok && SD.adimlar) SD.adimlar.forEach(x => { if (/dokümanları/.test(x[0])) x[1] = r.dok.guncel.length > 0; if (/Birime açıldı/.test(x[0])) x[1] = r.dok.guncel.some(y => y.birimde); });
   if (r.mesaj != null && !r.b64) sMsg = r.mesaj; return r;
@@ -642,9 +661,66 @@ document.addEventListener('change', async e => {
   try {
     if (d.dset) await dIslem('dokGuncelle', { did: x.id, [d.k]: el.value });
     if (d.dkime) await dIslem('dokGuncelle', { did: x.id, kime: el.checked ? x.kime.concat([d.v]) : x.kime.filter(k => k !== d.v) });
-    if (d.dgizli) { if (el.checked && !confirm('"' + x.ad + '" gizli yapılsın mı? Yalnız yönetimde kalır, birime açılamaz.')) { el.checked = false; return; } await dIslem('dokGuncelle', { did: x.id, gizli: el.checked }); }
+    if (d.dgizli) { if (el.checked && !await onayla('"' + x.ad + '" gizli yapılsın mı? Yalnız yönetimde kalır, birime açılamaz.')) { el.checked = false; return; } await dIslem('dokGuncelle', { did: x.id, gizli: el.checked }); }
   } catch (err) { hataGoster(err); }
   render();
+});
+
+/* ---------- 8. Görevler ve e-postalar (19.11.2026) ---------- */
+let eTur = 'ogris', eTarih = '', eOn = null, eSec = new Set(), eEk = new Set(), eKonu = '', eMetin = '', eKayit = null, gListe = null, gOnizle = null, eOnceDahil = false;
+const GSUT = { e: /^(e-?posta|eposta|e-mail|email|mail)$/i, ad: /^(ad\s*soyad|adı\s*soyadı|hoca|öğretim elemanı|ad)$/i, tarih: /^tarih$/i, saat: /^saat$/i, gorev: /^(görev|gorev)$/i, yer: /^(yer|yer\s*\/\s*ayrıntı|derslik|ayrıntı)$/i, not: /^not$/i };
+function gorevOku(rows) {
+  for (let i = 0; i < Math.min(rows.length, 15); i++) { const r = rows[i].map(x => String(x == null ? '' : x).trim()), k = {};
+    r.forEach((h, j) => { for (const [ad, re] of Object.entries(GSUT)) if (k[ad] == null && re.test(h)) k[ad] = j; });
+    if (k.e != null && k.tarih != null && k.gorev != null) return { L: rows.slice(i + 1).map(x => Object.fromEntries(Object.entries(k).map(([a, j]) => [a, String(x[j] == null ? '' : x[j]).trim()]))).filter(x => x.e || x.ad), kol: Object.keys(k).join(', ') }; }
+  return { hata: 'Başlık satırı bulunamadı. Sütunlar: E-posta, Ad Soyad, Tarih, Saat, Görev, Yer / ayrıntı.' };
+}
+async function eIslem(islem, a) {
+  const r = await run('apiSinavIslem', ot, islem, Object.assign({ id: SD.id }, a));
+  if (r.err) { sHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; render(); return null; }
+  if (r.hata) { bilgi(r.hata); return null; }
+  if (r.mesaj) sMsg = r.mesaj; return r;
+}
+function eOnizlemeKur(o) { eOn = o; eKonu = o.konu; eMetin = o.metin; eSec = new Set(o.alicilar.filter(x => eOnceDahil || !x.once).map(x => x.e)); eEk = new Set(o.ekVars); }
+function vEposta() {
+  const G = SD.gorevOzet || { satir: 0, kisi: 0, gunler: [] }, T = SD.epTur || [], o = eOn;
+  const gorevTablo = gListe ? `<div class="scroll" style="max-height:300px"><table class="tt"><thead><tr><th>Hoca</th><th>Tarih</th><th>Saat</th><th>Görev</th><th>Yer</th></tr></thead><tbody>${gListe.map(g => `<tr><td>${sE(g.ad)}<br><span class="small muted">${sE(g.e)}</span></td><td>${sE(trT(g.tarih))}</td><td>${sE(g.saat)}</td><td>${sE(g.gorev)}</td><td>${sE(g.yer)}</td></tr>`).join('')}</tbody></table></div>` : '';
+  const onz = !o ? '' : `<div class="panel stack" style="gap:8px">
+      ${o.yonlendir ? `<div class="note n-hl small"><b>DENEME:</b> bütün e-postalar gerçek alıcıya değil <b>${sE(o.yonlendir)}</b> adresine gider; konuda asıl alıcı yazar.</div>` : ''}
+      <label class="f">Konu<input id="eKonu" value="${sE(eKonu)}"></label>
+      <label class="f">Metin ${o.kisisel ? '<span class="small muted">({AD} = hocanın adı, {GOREVLER} = kişisel görev tablosu, {PORTAL} = portal adresi)</span>' : ''}<textarea id="eMetin" rows="9" style="width:100%">${sE(eMetin)}</textarea></label>
+      <details><summary class="small"><b>Örnek (ilk alıcı için)</b></summary><pre class="small" style="white-space:pre-wrap">${sE(o.ornek)}</pre></details>
+      <div><b class="small">Alıcılar (${eSec.size} / ${o.alicilar.length})</b> <label class="ck small"><input type="checkbox" id="eOnce" ${eOnceDahil ? 'checked' : ''}> daha önce gönderilenleri de seç</label>
+        <div class="scroll" style="max-height:260px"><table class="tt"><thead><tr><th><input type="checkbox" id="eHepsi" ${eSec.size === o.alicilar.length && o.alicilar.length ? 'checked' : ''}></th><th>Ad</th><th>E-posta</th>${o.kisisel && o.gorev ? '<th>Görev</th>' : ''}<th>Daha önce</th></tr></thead><tbody>
+        ${o.alicilar.map(x => `<tr><td><input type="checkbox" data-esec="${sE(x.e)}" ${eSec.has(x.e) ? 'checked' : ''}></td><td>${sE(x.ad)}</td><td class="mono small">${sE(x.e)}</td>${o.kisisel && o.gorev ? `<td>${x.n}</td>` : ''}<td class="small">${x.once ? '<span class="pill p-warn">gönderildi ' + sE(x.once) + '</span>' : '—'}</td></tr>`).join('')}</tbody></table></div></div>
+      <div><b class="small">Ekler (${eEk.size})</b> ${o.ekler.length ? o.ekler.map(x => `<label class="ck small" style="display:block"><input type="checkbox" data-eek="${sE(x.id)}" ${eEk.has(x.id) ? 'checked' : ''}> ${sE(x.ad)} <span class="muted">${x.kb} KB · kime: ${sE(x.kime)}</span></label>`).join('') : '<span class="small muted">Sınav dokümanlarında eklenebilecek (gizli olmayan) dosya yok.</span>'}</div>
+      <div class="row" style="gap:8px;align-items:center"><button class="btn" data-sact="eGonder" ${eSec.size ? '' : 'disabled'}>Gönder (${eSec.size} kişi)</button><span class="small muted">Bugün kalan gönderim kotası: ${o.kota}</span></div></div>`;
+  return `<details class="panel" ${det('ep', false)}><summary><b>8. Görevler ve e-postalar</b> <span class="small muted">(${G.satir ? G.kisi + ' hocaya ' + G.satir + ' görev' : 'görev listesi yok'})</span></summary><div class="stack" style="margin-top:8px">
+    <div class="panel stack" style="gap:6px"><b class="small">Görev listesi</b>
+      <p class="small muted" style="margin:0">Görev dağılımını Claude hazırlar; Excel'i buradan yüklenir (sütunlar: E-posta, Ad Soyad, Tarih, Saat, Görev, Yer / ayrıntı). Yeni liste bu sınavın önceki görev listesinin yerine geçer.</p>
+      <div class="small">${G.satir ? `${G.kisi} hoca · ${G.satir} görev · günler: ${G.gunler.map(g => sE(g.tr)).join(', ')}` : 'Henüz görev listesi yüklenmedi.'}</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">Görev listesi (Excel)<input type="file" id="gDosya" accept=".xlsx,.xls,.csv"></label>${G.satir ? `<button class="btn sm ghost" data-sact="gGoster">${gListe ? 'Listeyi gizle' : 'Listeyi göster'}</button>` : ''}</div>
+      ${gOnizle ? (gOnizle.hata ? `<div class="note n-bad small">${sE(gOnizle.hata)}</div>` : `<div class="note n-hl small">${sE(gOnizle.dosya)}: <b>${gOnizle.L.length}</b> satır (sütunlar: ${sE(gOnizle.kol)}). <button class="btn sm" data-sact="gKaydet">Görev listesini kaydet</button> <button class="btn sm ghost" data-sact="gVazgec">Vazgeç</button></div>`) : ''}
+      ${gorevTablo}</div>
+    <div class="panel stack" style="gap:6px"><b class="small">E-posta gönder</b>
+      <p class="small muted" style="margin:0">Önce "Önizle": alıcılar, konu, metin ve ekler gösterilir; istemediğiniz kişilerin işaretini kaldırın, sonra "Gönder" ve onay. Gönderen: sistemin Gmail adresi (yanıtlar Ayarlar › yanıt adresine). Her gönderim kayda geçer.</p>
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">Tür<select id="eTur" style="width:auto">${T.map(([k, t]) => `<option value="${k}" ${k === eTur ? 'selected' : ''}>${sE(t)}</option>`).join('')}</select></label>
+        ${eTur === 'hatirlatma' ? `<label class="f">Görev günü<select id="eTarih" style="width:auto"><option value="">Seçin…</option>${G.gunler.map(g => `<option value="${g.tarih}" ${g.tarih === eTarih ? 'selected' : ''}>${sE(g.tr)}</option>`).join('')}</select></label>` : ''}
+        <button class="btn sm" data-sact="eOnizle">Önizle</button><button class="btn sm ghost" data-sact="eKayit">Gönderim kaydı</button></div>
+      ${onz}
+      ${eKayit ? `<div class="scroll" style="max-height:260px"><table class="tt"><thead><tr><th>Tarih</th><th>Tür</th><th>Alıcı</th><th>Konu</th><th>Durum</th><th>Gönderen</th></tr></thead><tbody>${eKayit.length ? eKayit.map(k => `<tr><td class="small">${sE(k.tarih)}</td><td class="small">${sE(k.tur)}</td><td class="small">${sE(k.ad)}<br><span class="muted">${sE(k.alici)}</span></td><td class="small">${sE(k.konu)}</td><td class="small">${sE(k.durum)}</td><td class="small">${sE(k.gonderen)}</td></tr>`).join('') : '<tr><td colspan="6" class="small muted">Kayıt yok.</td></tr>'}</tbody></table></div>` : ''}
+    </div></div></details>`;
+}
+document.addEventListener('input', e => { if (e.target.id === 'eKonu') eKonu = e.target.value; if (e.target.id === 'eMetin') eMetin = e.target.value; });
+document.addEventListener('change', async e => {
+  const el = e.target, d = el.dataset || {};
+  if (el.id === 'eTur') { eTur = el.value; eOn = null; return render(); }
+  if (el.id === 'eTarih') { eTarih = el.value; eOn = null; return render(); }
+  if (el.id === 'eOnce') { eOnceDahil = el.checked; if (eOn) eSec = new Set(eOn.alicilar.filter(x => eOnceDahil || !x.once).map(x => x.e)); return render(); }
+  if (el.id === 'eHepsi') { eSec = el.checked && eOn ? new Set(eOn.alicilar.map(x => x.e)) : new Set(); return render(); }
+  if (d.esec) { el.checked ? eSec.add(d.esec) : eSec.delete(d.esec); return render(); }
+  if (d.eek) { el.checked ? eEk.add(d.eek) : eEk.delete(d.eek); return render(); }
+  if (el.id === 'gDosya' && el.files[0]) { try { const f = el.files[0]; gOnizle = Object.assign(gorevOku(await excelSatirlari(f)), { dosya: f.name }); } catch (err) { gOnizle = { hata: 'Dosya okunamadı: ' + (err.message || err) }; } render(); }
 });
 
 /* ---------- olaylar ---------- */
@@ -674,16 +750,16 @@ document.addEventListener('change', async e => {
 });
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-sact]'); if (!el) return; const d = el.dataset;
-  const degisirse = () => !sDegisti || confirm('Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?');
+  const degisirse = async () => !sDegisti || await onayla('Kaydedilmemiş değişiklikler kaybolacak. Devam edilsin mi?');
   try {
     el.disabled = true;
-    if (d.sact === 'ac') { if (!degisirse()) return; sMsg = ''; sOnizle = null; await sIslem('ac', { id: d.id }); }
-    if (d.sact === 'yeni') { const t = $('#sYeniTur').value; if (!t) return alert('Sınav türü seçin.'); if (!degisirse()) return; sOnizle = null; await sIslem('yeni', { tur: t, ad: $('#sYeniAd').value }); }
+    if (d.sact === 'ac') { if (!(await degisirse())) return; sMsg = ''; sOnizle = null; await sIslem('ac', { id: d.id }); }
+    if (d.sact === 'yeni') { const t = $('#sYeniTur').value; if (!t) return bilgi('Sınav türü seçin.'); if (!(await degisirse())) return; sOnizle = null; await sIslem('yeni', { tur: t, ad: $('#sYeniAd').value }); }
     if (d.sact === 'otEkle') { const B = SX.bolum[d.b], son = B.oturum[B.oturum.length - 1] || {}; B.oturum.push(Object.assign({ tarih: '', saat: son.saat || '', lv: SD.hazirlik ? [] : ['Tek'] }, d.b === 'konusma' ? { kul: son.kul || 1 } : {})); sDegisti = true; render(); }
     if (d.sact === 'otSil') { const i = Number(d.i); SX.bolum[d.b].oturum.splice(i, 1); if (SX.derslik[d.b] && d.b !== 'konusma') SX.derslik[d.b].splice(i, 1);
       if (d.b === 'konusma') SX.derslik.konusma = SX.derslik.konusma.filter(k => k.oi !== i).map(k => (k.oi > i ? Object.assign(k, { oi: k.oi - 1 }) : k)); sDegisti = true; render(); }
     if (d.sact === 'konEkle') { SX.derslik.konusma.push({ oi: Number(d.oi), lv: d.lv, juri: 0, derslikler: [], bekleme: '', kayit: '', tv: '' }); sDegisti = true; render(); }
-    if (d.sact === 'dYukle') { const F = Array.from(($('#dDosya') || {}).files || []); if (!F.length) return alert('Dosya seçin.');
+    if (d.sact === 'dYukle') { const F = Array.from(($('#dDosya') || {}).files || []); if (!F.length) return bilgi('Dosya seçin.');
       for (let i = 0; i < F.length; i++) { dYukleniyor = (i + 1) + '/' + F.length + ': ' + F[i].name; render(); const b64 = await dosyaB64(F[i]);
         if (!(await dIslem('dokYukle', { ad: F[i].name, tur: F[i].type, b64, bolum: dVars.bolum, lv: dVars.lv, kime: dVars.kime }))) break; }
       dYukleniyor = ''; render(); }
@@ -691,28 +767,37 @@ document.addEventListener('click', async e => {
     if (d.sact === 'dZip') { const r = await dIslem('dokZip', d.hepsi === '1' ? {} : { dids: [...dSec] }); if (r && r.b64) dIndir(r); }
     if (d.sact === 'dHepsiSec') { const G = SD.dok.guncel; dSec = dSec.size === G.length ? new Set() : new Set(G.map(x => x.id)); render(); }
     if (d.sact === 'dBirimeAc') { const G = SD.dok.guncel.filter(x => dSec.has(x.id)), gz = G.filter(x => x.gizli);
-      if (confirm(G.length + ' dosya ' + (SD.dok.birimAd || 'birime') + '\'ne açılsın mı?' + (gz.length ? '\n' + gz.length + ' gizli dosya açılmayacak (kör grading).' : '') + '\nE-posta gitmez; birim üyeleri "Birim çalışmaları" ekranında görür.')) { await dIslem('dokBirimeAc', { dids: G.map(x => x.id) }); dSec = new Set(); render(); } }
-    if (d.sact === 'dBirimdenKaldir' && confirm('Dosya birimden kaldırılsın mı? (Silinmez.)')) { await dIslem('dokBirimdenKaldir', { did: d.did }); render(); }
-    if (d.sact === 'dKaldir' && confirm('Dosya listeden kaldırılsın mı? (Silinmez; Drive\'da "eski versiyonlar" klasörüne taşınır.)')) { await dIslem('dokKaldir', { did: d.did }); render(); }
+      if (await onayla(G.length + ' dosya ' + (SD.dok.birimAd || 'birime') + '\'ne açılsın mı?' + (gz.length ? '\n' + gz.length + ' gizli dosya açılmayacak (kör grading).' : '') + '\nE-posta gitmez; birim üyeleri "Birim çalışmaları" ekranında görür.')) { await dIslem('dokBirimeAc', { dids: G.map(x => x.id) }); dSec = new Set(); render(); } }
+    if (d.sact === 'dBirimdenKaldir' && await onayla('Dosya birimden kaldırılsın mı? (Silinmez.)')) { await dIslem('dokBirimdenKaldir', { did: d.did }); render(); }
+    if (d.sact === 'dKaldir' && await onayla('Dosya listeden kaldırılsın mı? (Silinmez; Drive\'da "eski versiyonlar" klasörüne taşınır.)')) { await dIslem('dokKaldir', { did: d.did }); render(); }
+    if (d.sact === 'gKaydet') { const r = await eIslem('gorevYukle', { satirlar: gOnizle.L }); if (r) { gOnizle = null; SD.gorevOzet = { satir: r.gorev.liste.length, kisi: r.gorev.kisi, gunler: r.gorev.gunler }; gListe = null; eOn = null; } render(); }
+    if (d.sact === 'gVazgec') { gOnizle = null; render(); }
+    if (d.sact === 'gGoster') { if (gListe) gListe = null; else { const r = await eIslem('gorevListe', {}); if (r) gListe = r.gorev.liste; } render(); }
+    if (d.sact === 'eOnizle') { const r = await eIslem('epOnizle', { tur: eTur, tarih: eTarih }); if (r) eOnizlemeKur(r.onizleme); render(); }
+    if (d.sact === 'eKayit') { if (eKayit) eKayit = null; else { const r = await eIslem('epKayit', {}); if (r) eKayit = r.kayit; } render(); }
+    if (d.sact === 'eGonder') { const o = eOn, L = o.alicilar.filter(x => eSec.has(x.e)), ek = o.ekler.filter(x => eEk.has(x.id));
+      const msj = L.length + ' kişiye e-posta gidecek' + (o.yonlendir ? ' (DENEME: hepsi ' + o.yonlendir + ' adresine)' : '') + ':\n\n' + L.slice(0, 40).map(x => '• ' + x.ad + ' <' + x.e + '>').join('\n') + (L.length > 40 ? '\n… ve ' + (L.length - 40) + ' kişi daha' : '') + '\n\nKonu: ' + eKonu + '\nEkler: ' + (ek.length ? ek.map(x => x.ad).join(', ') : 'yok') + '\n\nGönderilsin mi?';
+      if (await onayla(msj, 'Gönder', 'Vazgeç')) { const r = await eIslem('epGonder', { tur: o.tur, tarih: o.tarih, alicilar: [...eSec], ekler: [...eEk], konu: eKonu, metin: eMetin });
+        if (r) { eOn = null; eKayit = null; const r2 = await run('apiSinavIslem', ot, 'ac', { id: SD.id }); if (r2.sinav) SD.adimlar = r2.sinav.adimlar; } render(); } }
     if (d.sact === 'kaydet') await sIslem('kaydet', { id: SD.id, ad: sAd, cfg: SX });
-    if (d.sact === 'oner') { const r = await run('apiSinavIslem', ot, 'oner', { id: SD.id, cfg: SX }); if (r.hata) return alert(r.hata); SX = r.cfg; sOner = new Set(r.onerilen); if (r.onerilen.length) sDegisti = true; sMsg = r.mesaj; render(); }
+    if (d.sact === 'oner') { const r = await run('apiSinavIslem', ot, 'oner', { id: SD.id, cfg: SX }); if (r.hata) return bilgi(r.hata); SX = r.cfg; sOner = new Set(r.onerilen); if (r.onerilen.length) sDegisti = true; sMsg = r.mesaj; render(); }
     if (d.sact === 'hazir') { if (sDegisti && !(await sIslem('kaydet', { id: SD.id, ad: sAd, cfg: SX }))) return;
-      if (SD.kontrol.hata.length) return alert('Önce şu eksikler giderilmeli:\n- ' + SD.kontrol.hata.slice(0, 15).join('\n- '));
-      if (confirm((SD.kontrol.uyari.length ? SD.kontrol.uyari.length + ' uyarı var (kontrol listesinde). ' : '') + 'Sınav "hazır" olarak Claude\'a gönderilsin mi? Ayarlar kilitlenir; gerekirse "Düzenlemeye geri aç" ile açılır.')) await sIslem('hazir', { id: SD.id }); }
-    if (d.sact === 'geriAc' && confirm('Sınav yeniden düzenlemeye açılsın mı?')) await sIslem('hazir', { id: SD.id, geri: true });
-    if (d.sact === 'iptal' && confirm('"' + SD.ad + '" listeden kaldırılsın mı? (Kayıt silinmez; tabloda "iptal" olarak durur.)')) { if (await sIslem('iptal', { id: SD.id })) { SD = null; SX = null; sDegisti = false; render(); } }
+      if (SD.kontrol.hata.length) return bilgi('Önce şu eksikler giderilmeli:\n- ' + SD.kontrol.hata.slice(0, 15).join('\n- '));
+      if (await onayla((SD.kontrol.uyari.length ? SD.kontrol.uyari.length + ' uyarı var (kontrol listesinde). ' : '') + 'Sınav "hazır" olarak Claude\'a gönderilsin mi? Ayarlar kilitlenir; gerekirse "Düzenlemeye geri aç" ile açılır.')) await sIslem('hazir', { id: SD.id }); }
+    if (d.sact === 'geriAc' && await onayla('Sınav yeniden düzenlemeye açılsın mı?')) await sIslem('hazir', { id: SD.id, geri: true });
+    if (d.sact === 'iptal' && await onayla('"' + SD.ad + '" listeden kaldırılsın mı? (Kayıt silinmez; tabloda "iptal" olarak durur.)')) { if (await sIslem('iptal', { id: SD.id })) { SD = null; SX = null; sDegisti = false; render(); } }
     if (d.sact === 'listeKaydet') { const o = sOnizle; if (sDegisti && !(await sIslem('kaydet', { id: SD.id, ad: sAd, cfg: SX, not: 'Ayarlar kaydedildi (liste yüklemeden önce).' }))) return;
       if (await sIslem('liste', { id: SD.id, satirlar: o.L, dosya: o.dosya })) { sOnizle = null; render(); } }
     if (d.sact === 'listeVazgec') { sOnizle = null; render(); }
     if (d.sact === 'dhEkle') { DH.push({ ad: '', bina: '', kat: '', kap: 0, skap: 0, sinif: '', not: '', durum: 'aktif' }); dhDegisti = true; render(); }
-    if (d.sact === 'dhKaydet') { const r = await run('apiSinavIslem', ot, 'derslikKaydet', { liste: DH.filter(x => String(x.ad || '').trim()) }); if (r.hata) return alert(r.hata); dhDegisti = false; SG = r; DH = JSON.parse(JSON.stringify(r.havuz)); sMsg = r.mesaj; render(); }
-    if (d.sact === 'dhIce') { const f = $('#dhDosya').files[0]; if (!f) return alert('Dosya seçin.'); if (dhDegisti && !confirm('Kaydedilmemiş derslik değişiklikleri kaybolacak. Devam edilsin mi?')) return;
+    if (d.sact === 'dhKaydet') { const r = await run('apiSinavIslem', ot, 'derslikKaydet', { liste: DH.filter(x => String(x.ad || '').trim()) }); if (r.hata) return bilgi(r.hata); dhDegisti = false; SG = r; DH = JSON.parse(JSON.stringify(r.havuz)); sMsg = r.mesaj; render(); }
+    if (d.sact === 'dhIce') { const f = $('#dhDosya').files[0]; if (!f) return bilgi('Dosya seçin.'); if (dhDegisti && !await onayla('Kaydedilmemiş derslik değişiklikleri kaybolacak. Devam edilsin mi?')) return;
       const rows = await excelSatirlari(f); let bi = rows.findIndex(r => r.some(x => /^derslik$/i.test(String(x).trim())));
-      if (bi < 0) return alert('"Derslik" başlıklı sütun bulunamadı.');
+      if (bi < 0) return bilgi('"Derslik" başlıklı sütun bulunamadı.');
       const H = rows[bi].map(x => String(x).trim().toLocaleLowerCase('tr')), k = re => H.findIndex(h => re.test(h));
       const kd = k(/^derslik$/), ks = k(/^sınıf$/), kk = k(/kapasite|öğrenci sayısı/), kb = k(/^bina$/), kt = k(/^kat$/);
       const sat = rows.slice(bi + 1).map(r => ({ ad: r[kd], sinif: ks >= 0 ? r[ks] : '', kap: kk >= 0 ? r[kk] : '', bina: kb >= 0 ? r[kb] : '', kat: kt >= 0 ? r[kt] : '' })).filter(x => String(x.ad || '').trim());
-      const r = await run('apiSinavIslem', ot, 'derslikIceAktar', { satirlar: sat }); if (r.hata) return alert(r.hata); dhDegisti = false; SG = r; DH = JSON.parse(JSON.stringify(r.havuz)); sMsg = r.mesaj; render(); }
+      const r = await run('apiSinavIslem', ot, 'derslikIceAktar', { satirlar: sat }); if (r.hata) return bilgi(r.hata); dhDegisti = false; SG = r; DH = JSON.parse(JSON.stringify(r.havuz)); sMsg = r.mesaj; render(); }
   } catch (err) { hataGoster(err); }
   finally { el.disabled = false; }
 });

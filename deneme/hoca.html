@@ -266,6 +266,25 @@ function editing() { const a = document.activeElement; return a && /^(INPUT|SELE
 let basili = false;
 document.addEventListener('pointerdown', () => { basili = true; }, true);
 ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => setTimeout(() => { basili = false; document.dispatchEvent(new Event('focusout')); }, 60), true));
+/* Sayfa içi onay / bilgi kutusu (tarayıcı confirm/alert yerine; Claude uygulamasının paneli bunları engelliyor – 19.11.2026). */
+function sayfaKutusu_(metin, iki, evet, hayir) {
+  return new Promise(ok => {
+    const o = document.createElement('div'); o.className = 'skutu-ort';
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    o.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:inherit;max-width:520px;width:100%;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25)">'
+      + '<div class="skutu-metin" style="white-space:pre-wrap;line-height:1.45;margin-bottom:14px"></div><div style="display:flex;gap:8px;justify-content:flex-end">'
+      + (iki ? '<button class="btn ghost" data-k="0"></button>' : '') + '<button class="btn" data-k="1"></button></div></div>';
+    o.querySelector('.skutu-metin').textContent = metin;
+    const b1 = o.querySelector('[data-k="1"]'); b1.textContent = evet || (iki ? 'Evet' : 'Tamam');
+    if (iki) o.querySelector('[data-k="0"]').textContent = hayir || 'Vazgeç';
+    const bitir = v => { document.removeEventListener('keydown', tus, true); o.remove(); ok(v); };
+    const tus = e => { if (e.key === 'Escape') { e.preventDefault(); bitir(false); } if (e.key === 'Enter') { e.preventDefault(); bitir(true); } };
+    o.addEventListener('click', e => { const k = e.target.closest && e.target.closest('[data-k]'); if (k) { e.stopPropagation(); bitir(k.dataset.k === '1'); } });
+    document.addEventListener('keydown', tus, true); document.body.appendChild(o); b1.focus();
+  });
+}
+function onayla(metin, evet, hayir) { return sayfaKutusu_(String(metin), true, evet, hayir); }
+function bilgi(metin) { return sayfaKutusu_(String(metin), false); }
 function hataGoster(e) { const m = (e && e.message) || String(e); const el = $('#hata'); if (el) { el.textContent = 'Bağlantı hatası: ' + m + ' Sayfayı yenileyin.'; el.hidden = false; } }
 
 /* Taslak notlar: HESAPLA'ya (writing'de "tamamlandı"ya) kadar yalnızca bu tarayıcıda tutulur, sonra tek seferde gönderilir. */
@@ -367,14 +386,14 @@ function vBirim() {
 }
 async function bOnay(b, hedef) {   // yönetim bildirimi: önce alıcı listesi gösterilir, onaylanırsa gider
   const r = await run('apiBirimIslem', ot, 'bildirimOnizle', { birim: b.id, hedef });
-  if (r.hata) { alert(r.hata); return false; }
+  if (r.hata) { bilgi(r.hata); return false; }
   if (!r.n) return true;
-  return confirm('Bildirim e-postası şu ' + r.n + ' kişiye gidecek:\n\n' + r.alicilar.join(', ') + '\n\nOnaylıyor musunuz?');
+  return await onayla('Bildirim e-postası şu ' + r.n + ' kişiye gidecek:\n\n' + r.alicilar.join(', ') + '\n\nOnaylıyor musunuz?');
 }
 async function bIslem(islem, a) {
   const r = await run('apiBirimIslem', ot, islem, a);
   if (r.err === 'OTURUM') { bHata = 'Oturum sona erdi; yeniden giriş yapın.'; return render(true); }
-  if (r.hata) { alert(r.hata); return; }
+  if (r.hata) { bilgi(r.hata); return; }
   bMsg = r.mesaj || ''; if (r.v) BV = r.v; render(true); return r;
 }
 document.addEventListener('input', e => { const k = e.target.dataset && e.target.dataset.btaslak; if (k) bTaslak[k] = e.target.value; });
@@ -389,27 +408,27 @@ document.addEventListener('click', async e => {
     el.disabled = true;
     if (d.bact === 'yukle') {
       const f = $('#bDosya').files[0], et = $('#bEtiket').value, lv = $('#bLv') ? $('#bLv').value : '', bildir = !!($('#bBildir') && $('#bBildir').checked);
-      if (!f) return alert('Dosya seçin.'); if (!et) return alert('Etiket seçmek zorunludur.'); if (b.duzeyli && b.yonetici && !lv) return alert('Düzey seçin (ya da Ortak).');
-      if (f.size > BV.maxMb * 1048576) return alert('Dosya ' + BV.maxMb + ' MB\'tan büyük olamaz.');
+      if (!f) return bilgi('Dosya seçin.'); if (!et) return bilgi('Etiket seçmek zorunludur.'); if (b.duzeyli && b.yonetici && !lv) return bilgi('Düzey seçin (ya da Ortak).');
+      if (f.size > BV.maxMb * 1048576) return bilgi('Dosya ' + BV.maxMb + ' MB\'tan büyük olamaz.');
       if (b.yonetici && bildir && !(await bOnay(b, b.duzeyli ? lv : 'birim'))) return;
       bMsg = 'Yükleniyor…'; render(true);
       const b64 = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1] || ''); fr.onerror = () => no(fr.error); fr.readAsDataURL(f); });
       await bIslem('yukle', { birim: b.id, ad: f.name, tur: f.type, etiket: et, lv, b64, bildir });
     }
     if (d.bact === 'indir') {
-      const r = await run('apiBirimIslem', ot, 'indir', { birim: b.id, id: d.id }); if (r.hata) return alert(r.hata);
+      const r = await run('apiBirimIslem', ot, 'indir', { birim: b.id, id: d.id }); if (r.hata) return bilgi(r.hata);
       const bin = atob(r.b64), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u8], { type: r.tur || 'application/octet-stream' })); a.download = r.ad; document.body.appendChild(a); a.click(); a.remove();
     }
-    if (d.bact === 'kaldir' && confirm('Dosya kaldırılsın mı? (Silinmez, "eski versiyonlar" klasörüne taşınır.)')) await bIslem('kaldir', { birim: b.id, id: d.id });
+    if (d.bact === 'kaldir' && await onayla('Dosya kaldırılsın mı? (Silinmez, "eski versiyonlar" klasörüne taşınır.)')) await bIslem('kaldir', { birim: b.id, id: d.id });
     if (d.bact === 'ortak') await bIslem('ortak', { birim: b.id, id: d.id, lv: d.lv });
     if (d.bact === 'mesaj') {
-      const metin = ($('#bmMetin').value || '').trim(), hedef = $('#bmHedef').value, bildir = $('#bmBildir').checked; if (!metin) return alert('Mesaj yazın.');
+      const metin = ($('#bmMetin').value || '').trim(), hedef = $('#bmHedef').value, bildir = $('#bmBildir').checked; if (!metin) return bilgi('Mesaj yazın.');
       if (bildir && !(await bOnay(b, hedef))) return;
       if (await bIslem('mesaj', { birim: b.id, hedef, metin, bildir })) delete bTaslak['yeni:' + b.id];
     }
     if (d.bact === 'yanit') {
-      const metin = ($('#by-' + d.id).value || '').trim(); if (!metin) return alert('Yanıt yazın.');
+      const metin = ($('#by-' + d.id).value || '').trim(); if (!metin) return bilgi('Yanıt yazın.');
       const kime = $('#bk-' + d.id) ? $('#bk-' + d.id).value : '', bildir = !!($('#bb-' + d.id) && $('#bb-' + d.id).checked);
       if (b.yonetici && bildir && !(await bOnay(b, kime ? 'hoca:' + kime : (b.mesajlar.find(m => m.id === d.id) || {}).hedefKod || 'birim'))) return;
       if (await bIslem('yanit', { birim: b.id, ust: d.id, metin, kime, bildir })) delete bTaslak['y:' + d.id];

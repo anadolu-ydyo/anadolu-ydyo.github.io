@@ -310,6 +310,25 @@ function editing() { const a = document.activeElement; return a && /^(INPUT|SELE
 let basili = false;
 document.addEventListener('pointerdown', () => { basili = true; }, true);
 ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => setTimeout(() => { basili = false; document.dispatchEvent(new Event('focusout')); }, 60), true));
+/* Sayfa içi onay / bilgi kutusu (tarayıcı confirm/alert yerine; Claude uygulamasının paneli bunları engelliyor – 19.11.2026). */
+function sayfaKutusu_(metin, iki, evet, hayir) {
+  return new Promise(ok => {
+    const o = document.createElement('div'); o.className = 'skutu-ort';
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    o.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:inherit;max-width:520px;width:100%;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25)">'
+      + '<div class="skutu-metin" style="white-space:pre-wrap;line-height:1.45;margin-bottom:14px"></div><div style="display:flex;gap:8px;justify-content:flex-end">'
+      + (iki ? '<button class="btn ghost" data-k="0"></button>' : '') + '<button class="btn" data-k="1"></button></div></div>';
+    o.querySelector('.skutu-metin').textContent = metin;
+    const b1 = o.querySelector('[data-k="1"]'); b1.textContent = evet || (iki ? 'Evet' : 'Tamam');
+    if (iki) o.querySelector('[data-k="0"]').textContent = hayir || 'Vazgeç';
+    const bitir = v => { document.removeEventListener('keydown', tus, true); o.remove(); ok(v); };
+    const tus = e => { if (e.key === 'Escape') { e.preventDefault(); bitir(false); } if (e.key === 'Enter') { e.preventDefault(); bitir(true); } };
+    o.addEventListener('click', e => { const k = e.target.closest && e.target.closest('[data-k]'); if (k) { e.stopPropagation(); bitir(k.dataset.k === '1'); } });
+    document.addEventListener('keydown', tus, true); document.body.appendChild(o); b1.focus();
+  });
+}
+function onayla(metin, evet, hayir) { return sayfaKutusu_(String(metin), true, evet, hayir); }
+function bilgi(metin) { return sayfaKutusu_(String(metin), false); }
 function hataGoster(e) { const m = (e && e.message) || String(e); const el = $('#hata'); if (el) { el.textContent = 'Bağlantı hatası: ' + m + ' Sayfayı yenileyin.'; el.hidden = false; } }
 
 /* Taslak notlar: HESAPLA'ya (writing'de "tamamlandı"ya) kadar yalnızca bu tarayıcıda tutulur, sonra tek seferde gönderilir. */
