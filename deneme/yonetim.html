@@ -686,6 +686,7 @@ function vEposta() {
   const G = SD.gorevOzet || { satir: 0, kisi: 0, gunler: [] }, T = SD.epTur || [], o = eOn;
   const gorevTablo = gListe ? `<div class="scroll" style="max-height:300px"><table class="tt"><thead><tr><th>Hoca</th><th>Tarih</th><th>Saat</th><th>Görev</th><th>Yer</th></tr></thead><tbody>${gListe.map(g => `<tr><td>${sE(g.ad)}<br><span class="small muted">${sE(g.e)}</span></td><td>${sE(trT(g.tarih))}</td><td>${sE(g.saat)}</td><td>${sE(g.gorev)}</td><td>${sE(g.yer)}</td></tr>`).join('')}</tbody></table></div>` : '';
   const onz = !o ? '' : `<div class="panel stack" style="gap:8px">
+      ${o.portalUyari ? `<div class="note n-hl small">${sE(o.portalUyari)}</div>` : ''}
       ${o.yonlendir ? `<div class="note n-hl small"><b>DENEME:</b> bütün e-postalar gerçek alıcıya değil <b>${sE(o.yonlendir)}</b> adresine gider; konuda asıl alıcı yazar.</div>` : ''}
       <label class="f">Konu<input id="eKonu" value="${sE(eKonu)}"></label>
       <label class="f">Metin ${o.kisisel ? '<span class="small muted">({AD} = hocanın adı, {GOREVLER} = kişisel görev tablosu, {PORTAL} = portal adresi)</span>' : ''}<textarea id="eMetin" rows="9" style="width:100%">${sE(eMetin)}</textarea></label>
