@@ -543,7 +543,13 @@ function vGorev() {
     <div class="stack" style="gap:2px">${ck(G + 'gecmisYuk', 'Geçmiş görev yüklerini dikkate al')}<span class="small muted">İşaretliyse önceki sınavlarda az görev alan hocalara önce görev verilir (yıl boyu denge). Boş bırakılırsa geçmişe bakılmaz; görevler bu sınavda hocalara mümkün olduğunca eşit (görev sayısı ve saat) dağıtılır.</span></div>
     <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Görev talepleri (gün değişikliği / takas) son günü${inp(G + 'talepSon', 'date', 'style="width:auto"')}</label><label class="f">saat${inp(G + 'talepSaat', 'time', 'style="width:auto"')}</label>
       <span class="small muted">Boş bırakılırsa ilk bölümden 4 gün önce. O andan sonra görev listesi kesinleşir: hocalar yalnız mazeret bildirebilir, Claude hoca adlı dokümanları üretir.</span></div>
-    <div class="stack" style="gap:4px">${ck(G + 'yalnizGonullu', 'Yalnız görev isteyen hocalar görev alır')}<span class="small muted">İşaretliyse görev yalnız tercihi "Görev istiyor" olan hocalara verilir (ör. Erasmus). Şu an ${Object.values(T).filter(x => x && x.t === 'istiyor').length} hoca "Görev istiyor" olarak işaretli.</span>
+    ${SD.durum === 'hazir' || SD.durum === 'kuruldu' ? '<p class="small muted" style="margin:0">Hoca tercihleri ve gönüllüler sınav hazırken de değiştirilebilir: aşağıdaki "Hoca tercihleri ve gönüllüler" bölümünde.</p>' : vTercih()}</div></details>`;
+}
+/* Hoca tercihleri + gönüllüler (22.11.2026: sınav hazırken de düzenlenebilir; kilitliyken ayrı bölümde, "Tercihleri kaydet" ile) */
+function vTercih() {
+  const G = 'gorev.', T = SX.gorev.tercih || {}, muaf = new Set(SD.muaf || []), q = sAra.trim().toLocaleLowerCase('tr');
+  const L = SG.hocalar.filter(x => !q || x.ad.toLocaleLowerCase('tr').includes(q) || (T[x.id] && T[x.id].t !== 'normal'));
+  return `<div class="stack" style="gap:4px">${ck(G + 'yalnizGonullu', 'Yalnız görev isteyen hocalar görev alır')}<span class="small muted">İşaretliyse görev yalnız tercihi "Görev istiyor" olan hocalara verilir (ör. Erasmus). Şu an ${Object.values(T).filter(x => x && x.t === 'istiyor').length} hoca "Görev istiyor" olarak işaretli.</span>
       <details><summary class="small">Görev isteyenleri toplu işaretle</summary><div class="stack" style="gap:4px;margin-top:4px"><textarea id="gonListe" rows="4" placeholder="E-posta adreslerini ya da ad soyadları yapıştırın (her satıra bir kişi ya da virgülle ayrılmış)"></textarea>
         <div class="row" style="gap:8px"><button class="btn sm" data-tact="gonIsaretle" type="button">"Görev istiyor" olarak işaretle</button><span class="small muted">Kaydetmeyi unutmayın.</span></div></div></details></div>
     <p class="small muted" style="margin:0">${sE(SD.birim)} üyeleri bu sınavda görev almaz (kendiliğinden). Görev dağılımını Claude yapar.</p>
@@ -551,7 +557,13 @@ function vGorev() {
     <div class="scroll" style="max-height:420px"><table><thead><tr><th>Hoca</th><th>Tercih</th><th>Not (ör. hangi görev / hangi gün)</th></tr></thead><tbody>
     ${L.map(x => { const t = (T[x.id] || {}).t || 'normal';
       return `<tr><td>${sE(x.ad)}${muaf.has(x.e) ? ' <span class="pill p-mut">birim üyesi – görev yok</span>' : ''}</td><td><select data-sxt="${x.id}" style="width:auto">${Object.entries(SG.tercihAd).map(([k, v]) => `<option value="${k}" ${k === t ? 'selected' : ''}>${sE(v)}</option>`).join('')}</select></td>
-        <td>${t === 'normal' ? '' : `<input data-sxtn="${x.id}" value="${sE((T[x.id] || {}).not || '')}" maxlength="120" style="width:100%">`}</td></tr>`; }).join('')}</tbody></table></div></div></details>`;
+        <td>${t === 'normal' ? '' : `<input data-sxtn="${x.id}" value="${sE((T[x.id] || {}).not || '')}" maxlength="120" style="width:100%">`}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function vTercihKilitli() {
+  if (!(SD.durum === 'hazir')) return '';
+  const T = SX.gorev.tercih || {}, n = Object.keys(T).filter(k => T[k] && T[k].t && T[k].t !== 'normal').length;
+  return `<details class="panel" ${det('ter', false)}><summary><b>Hoca tercihleri ve gönüllüler</b> <span class="small muted">(${n} tercih · sınav hazırken de değiştirilebilir)</span></summary><div class="stack" style="margin-top:8px">${vTercih()}
+    <div class="row" style="gap:8px;align-items:center"><button class="btn" data-tact="tercihKaydet">Tercihleri kaydet</button>${sDegisti ? '<span class="pill p-warn">Kaydedilmemiş değişiklik var</span>' : ''}<span class="small muted">Görev dağılımı yapıldıysa değişiklikten sonra Claude'a haber verin.</span></div></div></details>`;
 }
 /* ---------- öğrenci / aday listesi ---------- */
 const SUT = { no: /^(öğrenci\s*no|ogrenci\s*no|öğrenci\s*numarası|numara|no|student\s*(no|id|number))$/i, ad: /^(ad\s*soyad|adı\s*soyadı|ad-soyad|adsoyad|ad\s*ve\s*soyad|name|full\s*name)$/i,
@@ -615,7 +627,7 @@ function vSinavDetay() {
   return `<div class="stack"><div class="row" style="justify-content:space-between;align-items:baseline;flex-wrap:wrap"><h2 style="margin:0">${sE(SD.ad)} <span class="pill ${(DUR[SD.durum] || ['p-mut'])[0]}">${sE((DUR[SD.durum] || ['', SD.durum])[1])}</span></h2>
       <span class="small muted">${SD.kalan != null ? (SD.kalan >= 0 ? 'İlk bölüme ' + SD.kalan + ' gün (' + sE(SD.ilk) + ')' : 'İlk bölüm geçti') : 'Tarih girilmedi'} · son değişiklik ${sE(SD.guncelleme || '')} ${sE(SD.guncelleyen || '')}</span></div>
     <div class="panel stack" style="gap:6px"><b class="small">Sınav kontrol listesi</b>${adim}${kont}</div>
-    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}${vDok()}${vEposta()}${vTalep()}
+    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}${vTercihKilitli()}${vDok()}${vEposta()}${vTalep()}
     <details class="panel" ${det('gec', false)}><summary><b>Geçmiş</b></summary><ul class="small">${SD.gecmis.map(g => `<li>${sE(g[0])} · ${sE(g[1])} – ${sE(g[2])}</li>`).join('')}</ul></details></div>`;
 }
 function vSinav() {
@@ -765,6 +777,8 @@ document.addEventListener('click', async e => {
       const r = await yIslem('tlpAta', { g: d.g, hid }); if (r) { yAday = null; yElle = ''; } }
     if (d.tact === 'degistiKapat') { if (!(await onayla('"Görev listesi değişti" işareti kaldırılsın mı? (Claude dokümanları yeniden ürettiyse)', 'Kaldır', 'Vazgeç'))) return; await yIslem('tlpDegistiKapat', {}); }
     if (d.tact === 'listeIndir') yListeIndir();
+    if (d.tact === 'tercihKaydet') { el.disabled = true; const r = await run('apiSinavIslem', ot, 'tercihKaydet', { id: SD.id, rev: SD.rev, tercih: SX.gorev.tercih || {}, yalnizGonullu: !!SX.gorev.yalnizGonullu }); el.disabled = false;
+      if (r.hata) return bilgi(r.hata); if (r.sinav) { sAcik(r.sinav); } bilgi(r.mesaj || 'Kaydedildi.'); render(); }
     if (d.tact === 'gonIsaretle') { const ham = ($('#gonListe') || {}).value || '', muaf = new Set(SD.muaf || []), T = SX.gorev.tercih = SX.gorev.tercih || {};
       const kucuk = x => String(x || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
       const parca = ham.split(/[\n,;\t]+/).map(x => x.trim()).filter(Boolean), bul = [], yok = [], birim = [];
