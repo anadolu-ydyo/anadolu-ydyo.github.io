@@ -516,7 +516,7 @@ function hAnketOku(n) {
 /* ---------- portal ---------- */
 function vMenu() {
   return `<div class="menu">
-    <button data-act="pv" data-v="gorev"><b>Yaklaşan görevlerim</b><span>Gözetmenlik, jüri, writing grading ve yedeklik; tarih, saat, derslik</span></button>
+    <button data-act="pv" data-v="gorev"><b>Yaklaşan görevlerim</b><span>Gözetmenlik, jüri, writing grading ve yedeklik; tarih, saat, derslik · mazeret / değişiklik talebi${TH && TH.teklif.length ? ' · <b>' + TH.teklif.length + ' takas önerisi yanıt bekliyor</b>' : ''}</span></button>
     <button data-act="pv" data-v="speaking"><b>Speaking not girişi</b><span>Sınav günü jüri ekranı ve not girişi</span></button>
     <button data-act="pv" data-v="writing"><b>Writing grading</b><span>Değerlendireceğiniz zarflar (first / second)</span></button>
     <button data-act="pv" data-v="gecmis"><b>Geçmiş görevler</b><span>Salt okunur</span></button>
@@ -524,9 +524,49 @@ function vMenu() {
     ${V.anket && V.anket.S && V.anket.S !== 'bekle' ? `<button data-act="pv" data-v="anketS"><b>Speaking görüş ve öneri anketi</b><span>${V.anket.S === 'tamam' ? 'Dolduruldu – teşekkürler' : 'Jüri göreviniz tamamlandı; lütfen doldurun'}</span></button>` : ''}
     ${V.anket && V.anket.W && V.anket.W !== 'bekle' ? `<button data-act="pv" data-v="anketW"><b>Writing görüş ve öneri anketi</b><span>${V.anket.W === 'tamam' ? 'Dolduruldu – teşekkürler' : 'Writing göreviniz tamamlandı; lütfen doldurun'}</span></button>` : ''}</div>`;
 }
+/* ---------- görevlerim ve görev talepleri (22.11.2026) ---------- */
+let TH = null, tForm = null, tMsg = '', tHata = '';
+async function talepYukle() { try { const r = await run('apiHocaTalep', ot); if (!r.err) { TH = r; render(); } } catch (e) { } }
+async function tIslem(ad, a, tamam) {
+  try { const r = await run('apiHocaTalepIslem', ot, ad, a); if (r.err === 'OTURUM') { ot = null; return yukle(); }
+    TH = r; if (r.hata) { tHata = r.hata; } else { tHata = ''; tMsg = r.mesaj || ''; if (tamam) tamam(); } render(true); }
+  catch (e) { hataGoster(e); }
+}
+const T_DURUM = { 'yönetim bekleniyor': 'p-warn', 'karşı hoca bekleniyor': 'p-warn', 'onaylandı': 'p-ok', 'reddedildi': 'p-bad', 'karşı hoca reddetti': 'p-bad', 'geri çekildi': 'p-mut' };
+function vTalepForm(g) {
+  const f = tForm, tur = f.tur || '';
+  const sec = (v, ad, kapali) => `<label class="ck" style="display:block"><input type="radio" name="tTur" value="${v}" ${tur === v ? 'checked' : ''} ${kapali ? 'disabled' : ''}> ${esc(ad)}${kapali ? ' <span class="small muted">(writing grading görevlerinde yok)</span>' : ''}</label>`;
+  return `<div class="panel stack" style="gap:8px;outline:2px solid var(--accent)"><b>Talep: ${esc(g.tr)} ${esc(g.saat)} · ${esc(g.gorev)}${g.yer ? ' · ' + esc(g.yer) : ''}</b>
+    ${g.kesin ? '<div class="note n-hl small">Görev listesi kesinleşti; artık yalnız mazeret bildirebilirsiniz.</div>' : ''}
+    <div>${sec('mazeret', 'Görevi yapamıyorum (mazeret)')}${g.kesin ? '' : sec('gun', 'Bu gün / saat yerine başka bir gün / saat istiyorum') + sec('takas', 'Bir hocayla takas önermek istiyorum', g.tur === 'grading')}</div>
+    ${tur === 'gun' ? `<label class="f">İstediğiniz gün ve saat<input id="tIst" value="${esc(f.ist || '')}" placeholder="ör. 3 Aralık öğleden sonra"></label>` : ''}
+    ${tur === 'takas' ? `<label class="f">Takas önerdiğiniz hoca<select id="tKarsi"><option value="">Seçin…</option>${TH.hocalar.map(h => `<option value="${esc(h.id)}" ${f.karsi === h.id ? 'selected' : ''}>${esc(h.ad)}</option>`).join('')}</select></label>
+      <p class="small muted" style="margin:0">Önce seçtiğiniz hoca portalda kabul edip karşılığında vereceği görevi seçer, sonra yönetim değerlendirir.</p>` : ''}
+    <label class="f">Açıklama (zorunlu)<textarea id="tAcik" rows="3">${esc(f.ac || '')}</textarea></label>
+    <p class="small muted" style="margin:0">Yönetim onaylamadan görevinizde değişiklik olmaz. Değişiklik görevlendirme kurallarına uygun olmalıdır (ör. konuşma jürisinde üyelerden biri sınavın düzeyinden, öbürü aynı ya da komşu düzeyden).</p>
+    ${tHata ? `<div class="note n-bad small">${esc(tHata)}</div>` : ''}
+    <div class="row" style="gap:8px"><button class="btn" data-act="tGonder" ${tur ? '' : 'disabled'}>Talebi gönder</button><button class="btn ghost" data-act="tKapat">Vazgeç</button></div></div>`;
+}
 function vGorev() {
-  const G = V.gorevler;
-  return `<div class="panel"><h3>Yaklaşan görevlerim</h3>${G.length ? `<div class="scroll"><table><thead><tr><th>Tarih</th><th>Saat</th><th>Görev</th><th>Yer / ayrıntı</th></tr></thead><tbody>${G.map(t => `<tr><td>${esc(t.tarih)}</td><td class="mono">${esc(t.saat)}</td><td><b>${esc(t.gorev)}</b></td><td>${esc(t.yer)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Tanımlı görev yok.</p>'}</div>`;
+  const G = V.gorevler || [];
+  const eski = G.length ? `<div class="panel"><h3>Yaklaşan görevlerim</h3><div class="scroll"><table><thead><tr><th>Tarih</th><th>Saat</th><th>Görev</th><th>Yer / ayrıntı</th></tr></thead><tbody>${G.map(t => `<tr><td>${esc(t.tarih)}</td><td class="mono">${esc(t.saat)}</td><td><b>${esc(t.gorev)}</b></td><td>${esc(t.yer)}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+  if (!TH) return eski + '<div class="panel muted">Sınav görevleriniz yükleniyor…</div>';
+  const SG = TH.gorevler;
+  const satir = g => `<tr><td class="small">${esc(g.sinav)}</td><td>${esc(g.tr)}</td><td class="mono">${esc(g.saat)}</td><td><b>${esc(g.gorev)}</b></td><td>${esc(g.yer)}</td><td>${
+    g.bekleyen ? `<span class="pill p-warn">${esc(g.bekleyen)}</span>` : g.durum === 'değişecek' ? '<span class="pill p-warn">Gün/saat değişecek</span>'
+    : g.acik ? `<button class="btn sm ghost" data-act="tAc" data-g="${esc(g.id)}">Talep</button>` : '<span class="small muted">Talep süresi doldu – yönetimi telefonla arayın</span>'}</td></tr>${tForm && tForm.g === g.id ? `<tr><td colspan="6">${vTalepForm(g)}</td></tr>` : ''}`;
+  const yeni = `<div class="panel stack"><h3 style="margin:0">${G.length ? 'Sınav görevlerim' : 'Yaklaşan görevlerim'}</h3>
+    ${tMsg ? `<div class="note n-ok small">${esc(tMsg)}</div>` : ''}
+    ${SG.length ? `<div class="scroll"><table><thead><tr><th>Sınav</th><th>Tarih</th><th>Saat</th><th>Görev</th><th>Yer / ayrıntı</th><th></th></tr></thead><tbody>${SG.map(satir).join('')}</tbody></table></div>
+      <p class="small muted" style="margin:0">Mazeret, gün/saat değişikliği ya da takas talebinizi buradan iletebilirsiniz. Görev listesi kesinleşince (genellikle sınavdan 4 gün önce) yalnız mazeret bildirilebilir; görev gününden 2 gün önce saat 17:00'den sonra yönetimi telefonla arayın.</p>` : '<p class="muted">Yaklaşan sınav göreviniz yok.</p>'}</div>`;
+  const tek = TH.teklif.map(t => `<div class="note n-hl stack" style="gap:6px"><b>${esc(t.ad)} size görev takası önerdi${t.sinav ? ' (' + esc(t.sinav) + ')' : ''}</b>
+    <div>Onun görevi: <b>${esc(t.gOzet)}</b></div><div class="small">Açıklama: ${esc(t.aciklama)}</div>
+    ${t.secenek.length ? `<label class="f">Karşılığında vereceğiniz göreviniz<select id="tk-${esc(t.id)}">${t.secenek.map(x => `<option value="${esc(x.id)}">${esc(x.ozet)}</option>`).join('')}</select></label>` : '<div class="small muted">Takasa uygun göreviniz yok (görev günü yakın ya da başka talep var).</div>'}
+    <div class="row" style="gap:8px">${t.secenek.length ? `<button class="btn sm" data-act="tKabul" data-id="${esc(t.id)}">Kabul ediyorum</button>` : ''}<button class="btn sm ghost" data-act="tRed" data-id="${esc(t.id)}">Kabul etmiyorum</button></div></div>`).join('');
+  const tal = TH.talepler.length ? `<div class="panel"><h3>Taleplerim</h3><div class="scroll"><table><thead><tr><th>Tarih</th><th>Talep</th><th>Görev</th><th>Durum</th><th></th></tr></thead><tbody>${TH.talepler.map(t => `<tr><td class="small">${esc(t.tarih)}</td><td>${esc(t.turAd)}${t.istenen ? '<br><span class="small muted">İstenen: ' + esc(t.istenen) + '</span>' : ''}${t.kad ? '<br><span class="small muted">Hoca: ' + esc(t.kad) + '</span>' : ''}</td>
+    <td class="small">${esc(t.gOzet)}${t.kgOzet ? '<br>↔ ' + esc(t.kgOzet) : ''}</td><td><span class="pill ${T_DURUM[t.durum] || 'p-mut'}">${esc(t.durum)}</span>${t.kararNot ? '<br><span class="small muted">' + esc(t.kararNot) + '</span>' : ''}</td>
+    <td>${t.geriCek ? `<button class="btn sm ghost" data-act="tGeri" data-id="${esc(t.id)}">Geri çek</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>` : '';
+  return `<div class="stack">${tek}${yeni}${eski}${tal}</div>`;
 }
 /** Salt okunur jüri ekranı (2. ve 3. kullanım): notlar kâğıda yazılır. */
 function vJuriSalt(J) {
@@ -610,13 +650,14 @@ function render(force) {
   const jmL = (V.juri && V.juri.jmsj || []).filter(m => !m.okundu);
   const jm = jmL.map(m => `<div class="res r-hl" style="margin-bottom:10px"><div class="big">Yönetimden mesaj · ${esc(m.saat)}</div><p><b>${esc(m.metin)}</b></p><div><button class="btn" data-act="okudum" data-id="${esc(m.id)}">Okudum</button></div></div>`).join('');
   if (jm) uyar('jm:' + jmL.map(m => m.id).join(','));
-  const ust = jm + (sorun.acik ? vSorun() : '') + vMesajlar(V.msj, pv === 'menu');
+  const tb = TH && TH.bildirim.length ? `<div class="res r-hl" style="margin-bottom:10px"><div class="big">Görev bildirimi</div>${TH.bildirim.map(b => `<p><span class="small muted">${esc(b.tarih)}</span><br><b>${esc(b.metin)}</b></p>`).join('')}<div class="row" style="gap:8px"><button class="btn" data-act="tOkudum">Okudum</button>${pv !== 'gorev' ? '<button class="btn ghost" data-act="pv" data-v="gorev">Görevlerimi aç</button>' : ''}</div></div>` : '';
+  const ust = jm + tb + (sorun.acik ? vSorun() : '') + vMesajlar(V.msj, pv === 'menu');
   $('#app').innerHTML = (V.adm ? '<div class="note n-hl" style="margin-bottom:14px">Yönetim adına işlem yapıyorsunuz. Girilen notlar kayıtta "yönetim" olarak görünür.</div>' : '') + (ust ? `<div class="stack" style="margin-bottom:14px">${ust}</div>` : '') + b;
 }
 /* ---------- sunucu ---------- */
 async function yukle() {
   try {
-    if (ot) { const r = await run('apiHoca', ot); if (!r.err) { V = r; store.sset('ot:' + K, ot); render(); return; } ot = null; store.sdel('ot:' + K); }
+    if (ot) { const r = await run('apiHoca', ot); if (!r.err) { V = r; store.sset('ot:' + K, ot); render(); talepYukle(); return; } ot = null; store.sdel('ot:' + K); }
     const c = K && store.get(ckey());
     if (c) { const r = await run('apiHocaCihaz', K, c); if (r.oturum) { ot = r.oturum; store.sset('ot:' + K, ot); return yukle(); } store.del(ckey()); }
     if (EP) { giris.ad = ''; giris.ilk = false; V = null; render(true); return; }
@@ -666,7 +707,7 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; const d = b.dataset;
   if (d.act !== 'arm' && d.act !== 'gelmedi') armed = null;
   switch (d.act) {
-    case 'pv': pv = d.v; zarfAcik = null; hAMesaj = ''; if (pv === 'birim') { bMsg = ''; birimYukle(); } if (pv !== 'anketS' && pv !== 'anketW') hA = { l: [] }; return render(true);
+    case 'pv': pv = d.v; zarfAcik = null; hAMesaj = ''; tMsg = ''; tHata = ''; if (pv === 'gorev') talepYukle(); if (pv === 'birim') { bMsg = ''; birimYukle(); } if (pv !== 'anketS' && pv !== 'anketW') hA = { l: [] }; return render(true);
     case 'sorunAc': sorun = { acik: true, mesaj: '', tamam: false }; window.scrollTo(0, 0); return render(true);
     case 'sorunKapat': sorun = { acik: false, mesaj: '', tamam: false }; return render(true);
     case 'cikis': await run('apiCikis', ot).catch(() => { }); store.sdel('ot:' + K); store.del(ckey()); ot = null; V = null; pv = 'menu'; return yukle();
@@ -675,6 +716,17 @@ document.addEventListener('click', async e => {
     case 'zarf': zarfAcik = d.c || null; return render(true);
     case 'geldi': case 'gelmedi': case 'bitti': b.disabled = true; armed = null; return islem(d.act, { p: d.p, no: d.no });
     case 'okudum': b.disabled = true; return islem('okudum', { id: d.id });
+    case 'tAc': tForm = { g: d.g, tur: '' }; tHata = ''; tMsg = ''; return render(true);
+    case 'tKapat': tForm = null; tHata = ''; return render(true);
+    case 'tGonder': { tFormOku(); const a = { g: tForm.g, tur: tForm.tur, aciklama: tForm.ac || '', istenen: tForm.ist || '', karsi: tForm.karsi || '' };
+      if ((a.aciklama || '').trim().length < 10) { tHata = 'Açıklama yazın (en az 10 karakter).'; return render(true); }
+      if (a.tur === 'gun' && !a.istenen.trim()) { tHata = 'İstediğiniz gün ve saati yazın.'; return render(true); }
+      if (a.tur === 'takas' && !a.karsi) { tHata = 'Takas önerdiğiniz hocayı seçin.'; return render(true); }
+      b.disabled = true; return tIslem('talep', a, () => { tForm = null; }); }
+    case 'tGeri': if (!(await onayla('Bu talebi geri çekmek istiyor musunuz?', 'Geri çek', 'Vazgeç'))) return; b.disabled = true; return tIslem('geriCek', { id: d.id });
+    case 'tKabul': { const sel = document.getElementById('tk-' + d.id); if (!(await onayla('Takası kabul ediyorsunuz. Yönetim onaylarsa görevleriniz yer değiştirecek. Devam edilsin mi?', 'Kabul ediyorum', 'Vazgeç'))) return; b.disabled = true; return tIslem('takasYanit', { id: d.id, kabul: true, g: sel && sel.value }); }
+    case 'tRed': if (!(await onayla('Takas önerisini kabul etmiyorsunuz. Emin misiniz?', 'Evet', 'Vazgeç'))) return; b.disabled = true; return tIslem('takasYanit', { id: d.id, kabul: false });
+    case 'tOkudum': b.disabled = true; return tIslem('okudum', {});
     case 'ek': b.disabled = true; return islem('ek', { j: V.juri.jid, k: Number(d.k) });
     case 'hesapla': b.disabled = true; return islem('hesapla', gonderilecek('S', d.no), 'msg-S-' + d.no, () => taslakSil('S', d.no));
     case 'wKaydet': b.disabled = true; return islem('wKaydet', gonderilecek('W', d.no), 'msg-W-' + d.no, () => taslakSil('W', d.no));
@@ -697,9 +749,13 @@ document.addEventListener('change', e => {
     return;
   }
   if (d.wabs) return islem('wGirmedi', { no: d.wabs, v: el.checked });
+  if (el.name === 'tTur' || el.id === 'tKarsi') { tFormOku(); tHata = ''; return render(true); }
 });
+function tFormOku() { if (!tForm) return; const ac = $('#tAcik'), ist = $('#tIst'), k = $('#tKarsi'), r = document.querySelector('input[name=tTur]:checked');
+  if (ac) tForm.ac = ac.value; if (ist) tForm.ist = ist.value; if (k) tForm.karsi = k.value; if (r) tForm.tur = r.value; }
 function gonderilecek(g, no) { const t = TASLAK[g + no]; return t ? { no, c: t.c, oz: t.oz } : { no }; }
 document.addEventListener('input', e => {
+  if (e.target.id === 'tAcik' || e.target.id === 'tIst') { tFormOku(); return; }
   if (e.target.id === 'haDiger') { const vardi = !!(hA.diger || '').trim(); hA.diger = e.target.value; if (vardi !== !!hA.diger.trim()) { const f = e.target.closest('form'); hAnketOku(V.anketler[f.dataset.tur].madde.length); render(true); const el = $('#haDiger'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
 });
 document.addEventListener('focusout', () => setTimeout(() => { if (bekle && !basili && !editing()) render(); }, 0));
@@ -712,6 +768,7 @@ setInterval(async () => {
   const juriGunu = V.juri && !V.juri.yok;   // jüri günü: yönetim mesajları için 15 sn'de bir
   if (!ot || !(canli || ((bekleyen || juriGunu) && hTik % 3 === 0) || hTik % 12 === 0)) return;
   try { const r = await run('apiHoca', ot); if (!r.err) { V = r; render(); } } catch (e) { }
+  if (hTik % 12 === 0 && !tForm) talepYukle();
 }, 5000);
 yukle();
 </script>

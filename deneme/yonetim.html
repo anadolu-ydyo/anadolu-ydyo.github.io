@@ -451,7 +451,7 @@ async function sinavYukle() {
   catch (e) { sHata = (e && e.message) || String(e); }
   sYuk = false; render();
 }
-function sAcik(s) { SD = s; SX = JSON.parse(JSON.stringify(s.cfg)); sAd = s.ad; sDegisti = false; sOner = new Set(); }
+function sAcik(s) { SD = s; SX = JSON.parse(JSON.stringify(s.cfg)); sAd = s.ad; sDegisti = false; sOner = new Set(); if (typeof yMsg !== 'undefined') { yMsg = ''; yAday = null; yElle = ''; } }
 async function sIslem(islem, a) {
   if (SD && ['kaydet', 'liste', 'hazir'].includes(islem) && a.rev == null) a.rev = SD.rev;
   const r = await run('apiSinavIslem', ot, islem, a);
@@ -505,6 +505,21 @@ function vBolumler() {
       ${G.var ? `<div class="row" style="gap:8px;flex-wrap:wrap"><label class="f">First grader son gün${inp('bolum.grading.first', 'date')}</label><label class="f">Second grader son gün${inp('bolum.grading.second', 'date')}</label><label class="f">3./4. grader son gün${inp('bolum.grading.ucuncu', 'date')}</label></div>
       <p class="small muted" style="margin:0">Saatsiz; teslim tarihleriyle. 3. ve 4. grader kuralı S19'a göre (bir bentte fark ≥ 2).</p>` : ''}</div></div></div></details>`;
 }
+/* Grader kuralları (22.11.2026): her seçenek için öncelik numarası seçilir; 1. öncelikteki şartı taşıyan hoca bulunamazsa 2.'ye geçilir. */
+function vGraderKurallari() {
+  const GS = (SG.graderSec || {})[SD.birim && /Yeterlik/.test(SD.birim) ? 'yet' : 'disb']; if (!GS || !SX.grader) return '';
+  const tum = []; ['g1', 'g2', 'g3'].forEach(k => GS[k].forEach(([v, ad]) => { if (!tum.find(x => x[0] === v)) tum.push([v, ad]); }));
+  const hucre = (k, v) => { if (!GS[k].some(x => x[0] === v)) return '<td class="muted small">—</td>'; const L = SX.grader[k] || [], i = L.indexOf(v), n = L.length + (i < 0 ? 1 : 0);
+    return `<td><select data-grd="${k}" data-opt="${v}" style="width:auto"><option value="0">kullanma</option>${Array.from({ length: n }, (x, j) => `<option value="${j + 1}" ${i === j ? 'selected' : ''}>${j + 1}. öncelik</option>`).join('')}</select></td>`; };
+  const ozet = k => (SX.grader[k] || []).map((v, i) => `${i + 1}. ${sE((tum.find(x => x[0] === v) || [v, v])[1])}`).join(' → ') || '<span class="pill p-warn">seçilmedi</span>';
+  return `<div class="panel stack" style="gap:6px"><b class="small">Grader kuralları – kimler grader olabilir?</b>
+    <p class="small muted" style="margin:0">Her grader için kullanılacak seçeneklere öncelik numarası verin: önce 1. öncelikteki şartı taşıyan hoca aranır, bulunamazsa 2.'ye geçilir. Görev dağılımını Claude bu sıraya göre yapar.</p>
+    <div class="scroll"><table class="tt"><thead><tr><th>Seçenek</th><th>Grader-1</th><th>Grader-2</th><th>Grader-3</th></tr></thead><tbody>${tum.map(([v, ad]) => `<tr><td>${sE(ad)}</td>${hucre('g1', v)}${hucre('g2', v)}${hucre('g3', v)}</tr>`).join('')}</tbody></table></div>
+    <div class="small">Grader-1: ${ozet('g1')}<br>Grader-2: ${ozet('g2')}<br>Grader-3: ${ozet('g3')}</div></div>`;
+}
+document.addEventListener('change', e => { const d = e.target.dataset; if (!d || !d.grd || !SX) return;
+  const L = (SX.grader[d.grd] || []).filter(x => x !== d.opt), p = Number(e.target.value); if (p > 0) L.splice(Math.min(p - 1, L.length), 0, d.opt);
+  SX.grader[d.grd] = L; sDegisti = true; render(); });
 function vKurallar() {
   const h = SD.hazirlik, K = 'konusma.';
   return `<details class="panel" ${det('kon', false)}><summary><b>2. Konuşma kuralları</b></summary><div class="stack" style="margin-top:8px">
@@ -514,7 +529,8 @@ function vKurallar() {
     <p class="small muted" style="margin:0">Sabit kurallar (S11, S18): 5–15 dk geç kalan boş jüri bekler; 15 dk'dan fazla geç kalan alınmaz; son çağrı 15:45; son oturuma geç kalan 16:00 yedek slotta girer.</p></div></details>
   <details class="panel" ${det('yaz', false)}><summary><b>3. Yazma, çoktan seçmeli test ve grading kuralları</b></summary><div class="stack" style="margin-top:8px">
     <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Dinleme başlangıcı (sınav başından … dk sonra)${inp('yazma.dinlemeDk', 'number', 'min="0" max="60" style="width:80px"')}</label>
-      ${ck('yazma.gozetmenFirst', 'Gözetmen = first grader')}${h ? ck('yazma.secondSali', 'Second grader = sınıfın Salı öğleden sonra hocası') : ''}${ck('yazma.capraz', 'Çapraz eşleşme (iki grader aynı çiftte iki kez buluşmaz)')}</div>
+      ${ck('yazma.capraz', 'Çapraz eşleşme (iki grader aynı çiftte iki kez buluşmaz)')}</div>
+    ${vGraderKurallari()}
     <p class="small muted" style="margin:0">Bentler 1–5 (Content, Organization, Grammar, Lexical). Bir bentte fark ≥ 2 → yalnız o bent 3. grader'a; özel durum uyuşmazlığında uyarılı 3. grader, gerekirse 4. grader. Kâğıtlar taranır; grader yalnız rastgele kâğıt numarasını görür.</p></div></details>`;
 }
 function vGorev() {
@@ -524,6 +540,8 @@ function vGorev() {
   return `<details class="panel" ${det('gor', false)}><summary><b>4. Görev kuralları ve hoca tercihleri</b> <span class="small muted">(${n} hoca için tercih girildi)</span></summary><div class="stack" style="margin-top:8px">
     <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Günlük görev sınırı${inp(G + 'gunluk', 'number', 'min="1" max="6" style="width:70px"')}</label>
       <label class="f">Yedek oranı (%)${inp(G + 'yedekYuzde', 'number', 'min="0" max="30" style="width:70px"')}</label><label class="f">En az yedek${inp(G + 'yedekMin', 'number', 'min="0" max="30" style="width:70px"')}</label>${SD.hazirlik ? ck(G + 'juriAyniDuzey', 'Jüride aynı düzeyin hocaları') : ''}</div>
+    <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Görev talepleri (gün değişikliği / takas) son günü${inp(G + 'talepSon', 'date', 'style="width:auto"')}</label><label class="f">saat${inp(G + 'talepSaat', 'time', 'style="width:auto"')}</label>
+      <span class="small muted">Boş bırakılırsa ilk bölümden 4 gün önce. O andan sonra görev listesi kesinleşir: hocalar yalnız mazeret bildirebilir, Claude hoca adlı dokümanları üretir.</span></div>
     <p class="small muted" style="margin:0">${sE(SD.birim)} üyeleri bu sınavda görev almaz (kendiliğinden). Görev dağılımını Claude yapar.</p>
     <input id="sAra" placeholder="Hoca ara…" value="${sE(sAra)}" style="max-width:260px">
     <div class="scroll" style="max-height:420px"><table><thead><tr><th>Hoca</th><th>Tercih</th><th>Not (ör. hangi görev / hangi gün)</th></tr></thead><tbody>
@@ -593,7 +611,7 @@ function vSinavDetay() {
   return `<div class="stack"><div class="row" style="justify-content:space-between;align-items:baseline;flex-wrap:wrap"><h2 style="margin:0">${sE(SD.ad)} <span class="pill ${(DUR[SD.durum] || ['p-mut'])[0]}">${sE((DUR[SD.durum] || ['', SD.durum])[1])}</span></h2>
       <span class="small muted">${SD.kalan != null ? (SD.kalan >= 0 ? 'İlk bölüme ' + SD.kalan + ' gün (' + sE(SD.ilk) + ')' : 'İlk bölüm geçti') : 'Tarih girilmedi'} · son değişiklik ${sE(SD.guncelleme || '')} ${sE(SD.guncelleyen || '')}</span></div>
     <div class="panel stack" style="gap:6px"><b class="small">Sınav kontrol listesi</b>${adim}${kont}</div>
-    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}${vDok()}${vEposta()}
+    <fieldset ${kil ? 'disabled' : ''} style="border:0;padding:0;margin:0" class="stack">${vBolumler()}${vKurallar()}${vGorev()}${vListe()}${vSinavDerslik()}</fieldset>${alt}${vDok()}${vEposta()}${vTalep()}
     <details class="panel" ${det('gec', false)}><summary><b>Geçmiş</b></summary><ul class="small">${SD.gecmis.map(g => `<li>${sE(g[0])} · ${sE(g[1])} – ${sE(g[2])}</li>`).join('')}</ul></details></div>`;
 }
 function vSinav() {
@@ -666,9 +684,90 @@ document.addEventListener('change', async e => {
   render();
 });
 
+/* ---------- 9. Görev talepleri, değişiklikler, acil yedek yol (22.11.2026) ---------- */
+let yAday = null, yMsg = '', yElle = '';
+async function yIslem(islem, a) {
+  const r = await run('apiSinavIslem', ot, islem, Object.assign({ id: SD.id }, a));
+  if (r.err) { sHata = r.err === 'OTURUM' ? 'Oturum sona erdi; yeniden giriş yapın.' : r.err; render(); return null; }
+  if (r.hata) { bilgi(r.hata); return null; }
+  if (r.sinav) { SD.talep = r.sinav.talep; SD.adimlar = r.sinav.adimlar; SD.gorevOzet = r.sinav.gorevOzet; }
+  if (r.mesaj != null) yMsg = r.mesaj; render(); return r;
+}
+const Y_DURUM = { 'yönetim bekleniyor': 'p-warn', 'karşı hoca bekleniyor': 'p-mut', 'onaylandı': 'p-ok', 'reddedildi': 'p-bad', 'karşı hoca reddetti': 'p-bad', 'geri çekildi': 'p-mut' };
+function yAdayTablo(gid) {
+  if (!yAday || yAday.g !== gid) return '';
+  const L = yAday.aday;
+  return `<div class="panel stack" style="gap:6px;margin-top:6px"><b class="small">Uygun hocalar (görevlendirme kurallarına uyanlar; bu sınavda az görevi olanlar önce; o günün yedekleri sınav günü ihtiyaç olacağı için en sonda – görevin kendi gününde ise önce)</b>
+    ${L.length ? `<div class="scroll" style="max-height:260px"><table class="tt"><thead><tr><th>Hoca</th><th>Düzey</th><th>O günkü yedekliği</th><th>Bu sınavdaki görevi</th><th></th></tr></thead><tbody>${L.map(x => `<tr><td>${sE(x.ad)}${x.uyari.length ? '<br><span class="small muted">' + x.uyari.map(sE).join('<br>') + '</span>' : ''}</td><td>${sE(x.lv || '—')}</td><td class="small">${sE(x.yedek || '—')}</td><td>${x.n}</td>
+      <td><button class="btn sm" data-tact="ata" data-g="${sE(gid)}" data-hid="${sE(x.id)}" data-ad="${sE(x.ad)}">Ata</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="small muted" style="margin:0">Kurallara uyan boş hoca bulunamadı. Claude\'a yeniden dağıtım için söyleyin.</p>'}
+    <div class="row" style="gap:6px;align-items:flex-end;flex-wrap:wrap"><label class="f">Ya da başka bir hoca<select id="yBaska"><option value="">Seçin…</option>${(SG.hocalar || []).map(h => `<option value="${sE(h.id)}">${sE(h.ad)}</option>`).join('')}</select></label>
+      <button class="btn sm ghost" data-tact="ataBaska" data-g="${sE(gid)}">Ata (kurallar denetlenir)</button><button class="btn sm ghost" data-tact="adayKapat">Kapat</button></div></div>`;
+}
+function vTalep() {
+  const T = SD.talep; if (!T) return '';
+  const bek = T.liste.filter(t => t.durum === 'yönetim bekleniyor' || t.durum === 'karşı hoca bekleniyor'), bitti = T.liste.filter(t => !bek.includes(t));
+  const kart = t => `<div class="panel stack" style="gap:6px"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>${sE(t.turAd)}</b><span class="pill ${Y_DURUM[t.durum] || 'p-mut'}">${sE(t.durum)}</span><span class="small muted">${sE(t.tarih)}</span></div>
+    <div><b>${sE(t.ad)}</b>: ${sE(t.gOzet)}${t.kad ? `<br>↔ <b>${sE(t.kad)}</b>${t.kgOzet ? ': ' + sE(t.kgOzet) : ' (yanıt bekleniyor)'}` : ''}</div>
+    ${t.istenen ? `<div class="small">İstenen: <b>${sE(t.istenen)}</b></div>` : ''}<div class="small">Açıklama: ${sE(t.aciklama)}</div>${t.kararNot ? `<div class="small muted">Not: ${sE(t.kararNot)}</div>` : ''}
+    ${t.gYok ? '<div class="note n-bad small">Görev listesi değişmiş; bu görev artık listede yok. Talebi reddedip hocaya bildirin.</div>' : ''}
+    ${t.kriter && t.kriter.hata.length ? `<div class="note n-bad small"><b>Görevlendirme kurallarına uymuyor – onaylanamaz:</b><br>${t.kriter.hata.map(sE).join('<br>')}</div>` : ''}
+    ${t.kriter && t.kriter.uyari.length ? `<div class="note n-hl small">${t.kriter.uyari.map(sE).join('<br>')}</div>` : ''}
+    <div class="row" style="gap:6px;align-items:flex-end;flex-wrap:wrap"><label class="f" style="flex:1 1 220px">Not (hocaya gider, isteğe bağlı)<input id="yNot-${sE(t.id)}"></label>
+      ${t.durum === 'yönetim bekleniyor' ? `<button class="btn sm" data-tact="onay" data-tid="${sE(t.id)}" ${t.kriter && t.kriter.hata.length || t.gYok ? 'disabled' : ''}>Onayla</button>` : ''}<button class="btn sm ghost bad" data-tact="ret" data-tid="${sE(t.id)}">Reddet</button></div></div>`;
+  const acik = T.acik.length ? `<div class="panel stack" style="gap:6px"><b class="small">Açık görevler (mazeretle boşaldı – yerine biri atanmalı)</b>${T.acik.map(g => `<div><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><span class="pill p-bad">açık</span> ${sE(g.ozet)}${g.lv ? ' · ' + sE(g.lv) : ''} ${g.grading ? '<span class="small muted">Writing grading: yerine atamayı Claude grader kurallarına göre yapar.</span>' : `<button class="btn sm" data-tact="aday" data-g="${sE(g.id)}">Uygun hocaları göster</button>`}</div>${yAdayTablo(g.id)}</div>`).join('')}</div>` : '';
+  const K = T.kesin || {}, kes = `<div class="note ${K.kesin ? 'n-ok' : 'n-hl'} small">${K.kesin ? `<b>Görev listesi kesinleşti</b>${K.elle ? ' (' + sE(K.elle.kim) + ', ' + sE(K.elle.tarih) + ')' : ' (' + sE(K.otoTr) + ')'}: hocalar yalnız mazeret bildirebilir. Hoca adlı dokümanları (görev ve imza listeleri, jüri kâğıtları, gözetmen tutanakları, zarf teslim ve grading listeleri) Claude üretir.${K.elle ? ' <button class="btn sm ghost" data-tact="kesinGeri">Kesinleşmeyi geri al</button>' : ''}`
+    : `<b>Talep dönemi açık</b>: gün değişikliği ve takas ${K.otoTr ? sE(K.otoTr) + "'e kadar" : 'sınav tarihleri girilince hesaplanır'} (sınav ayarları › 4). <button class="btn sm" data-tact="kesinlestir">Görev listesini şimdi kesinleştir</button>`}</div>`;
+  const yed = (T.yedek || []).length ? `<div class="small"><b>Yedekler:</b> ${T.yedek.map(y => `<span class="pill ${y.az ? 'p-bad' : 'p-mut'}" style="margin:2px">${sE(y.tr + ' ' + y.gorev)}: ${y.n}${y.min ? ' / en az ' + y.min : ''}</span>`).join(' ')}${T.yedek.some(y => y.az) ? '<br><span style="color:var(--bad)">Bazı günlerde yedek sayısı en az yedek sınırının altında.</span>' : ''}</div>` : '';
+  const claude = T.claude ? `<div class="note n-hl small"><b>Claude yeniden dağıtacak (gün/saat değişikliği onaylandı):</b><br>${T.claude.map(g => sE(g.ad + ': ' + g.ozet + (g.not ? ' (' + g.not + ')' : ''))).join('<br>')}</div>` : '';
+  const elle = `<details class="panel"><summary><b class="small">Acil değişiklik (tek görevi elle başka hocaya ver)</b></summary><div class="stack" style="gap:6px;margin-top:6px">
+    <p class="small muted" style="margin:0">Sınav günü ya da Claude'a ulaşılamadığında: görevi seçin, uygun hocalar listelenir. Atama görevlendirme kurallarına göre denetlenir; iki hocaya portal bildirimi yazılır.</p>
+    <label class="f">Görev<select id="yElle"><option value="">Seçin…</option>${T.gorevler.filter(g => g.tur !== 'grading').map(g => `<option value="${sE(g.id)}" ${yElle === g.id ? 'selected' : ''}>${sE(trT(g.tarih) + ' ' + g.saat + ' · ' + g.gorev + (g.yer ? ' · ' + g.yer : '') + ' – ' + (g.ad || 'açık'))}</option>`).join('')}</select></label>
+    <div><button class="btn sm ghost" data-tact="elleAday">Uygun hocaları göster</button></div>${yElle ? yAdayTablo(yElle) : ''}</div></details>`;
+  const ok = T.okunmadi.length ? `<details class="panel"><summary><b class="small">Okunmamış bildirimler (${T.okunmadi.length})</b></summary><div class="scroll" style="max-height:220px"><table class="tt"><thead><tr><th>Hoca</th><th>Bildirim</th><th>Tarih</th><th>E-posta</th></tr></thead><tbody>${T.okunmadi.map(b => `<tr><td>${sE(b.ad)}</td><td class="small">${sE(b.metin)}</td><td class="small">${sE(b.tarih)}</td><td class="small">${sE(b.ep || 'gitmedi')}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+  const gecmis = bitti.length ? `<details class="panel"><summary><b class="small">Sonuçlanan talepler (${bitti.length})</b></summary><div class="scroll" style="max-height:260px"><table class="tt"><thead><tr><th>Tarih</th><th>Hoca</th><th>Talep</th><th>Görev</th><th>Durum</th><th>Karar</th></tr></thead><tbody>${bitti.map(t => `<tr><td class="small">${sE(t.tarih)}</td><td>${sE(t.ad)}</td><td class="small">${sE(t.turAd)}</td><td class="small">${sE(t.gOzet)}${t.kgOzet ? '<br>↔ ' + sE(t.kad + ': ' + t.kgOzet) : ''}</td><td><span class="pill ${Y_DURUM[t.durum] || 'p-mut'}">${sE(t.durum)}</span></td><td class="small">${sE(t.karar)} ${sE(t.kararTarih)}${t.kararNot ? '<br>' + sE(t.kararNot) : ''}</td></tr>`).join('')}</tbody></table></div></details>` : '';
+  const say = `${T.bekleyen} bekleyen talep${T.acik.length ? ' · ' + T.acik.length + ' açık görev' : ''}${T.okunmadi.length ? ' · ' + T.okunmadi.length + ' okunmamış bildirim' : ''}`;
+  return `<details class="panel" ${det('tlp', T.bekleyen > 0 || T.acik.length > 0)}><summary><b>9. Görev talepleri ve değişiklikler</b> <span class="small muted">(${say})</span></summary><div class="stack" style="margin-top:8px">
+    <p class="small muted" style="margin:0">Hocalar mazeret, gün/saat değişikliği ve takas taleplerini portaldaki "Yaklaşan görevlerim"den görev gününden 2 gün önce 17:00'ye kadar iletir. Hiçbir değişiklik onayınız olmadan uygulanmaz; onayda görevlendirme kuralları (birim üyeleri, aynı saatte iki görev, günlük sınır, jüri düzeyi) denetlenir.</p>
+    ${yMsg ? `<div class="note n-ok small" style="white-space:pre-wrap">${sE(yMsg)}</div>` : ''}
+    ${T.degisti ? `<div class="note n-hl small"><b>Görev listesi değişti</b> (${sE(T.degisti)}). Görev, imza ve jüri dokümanlarını Claude yeniden üretmeli; yeni görev Excel'i yüklenince bu işaret kalkar. Acil durumda güncel listeyi aşağıdan indirin. <button class="btn sm ghost" data-tact="degistiKapat">İşareti kaldır</button></div>` : ''}
+    ${T.epBekleyen ? `<div class="note n-hl small">${T.epBekleyen} bildirimin e-postası henüz gitmedi: 8. bölümde türü "Görev değişikliği bildirimi" seçip önizleyin ve gönderin.</div>` : ''}
+    ${kes}${yed}
+    ${bek.length ? bek.map(kart).join('') : '<p class="small muted" style="margin:0">Bekleyen talep yok.</p>'}
+    ${acik}${claude}${elle}
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm ghost" data-tact="listeIndir">Güncel görev ve imza listesini indir (Excel)</button></div>
+    ${ok}${gecmis}</div></details>`;
+}
+function yListeIndir() {
+  if (typeof XLSX === 'undefined') return bilgi('Excel kütüphanesi yüklenemedi; sayfayı yenileyin.');
+  const G = SD.talep.gorevler, wb = XLSX.utils.book_new(), gunler = [...new Set(G.map(g => g.tarih))].sort();
+  gunler.forEach(t => { const L = G.filter(g => g.tarih === t).sort((a, b) => (a.saat + a.gorev + a.yer).localeCompare(b.saat + b.gorev + b.yer, 'tr'));
+    const rows = [[SD.ad + ' – ' + trT(t) + ' görev ve imza listesi (portal, ' + new Date().toLocaleString('tr-TR') + ')'], [], ['Saat', 'Görev', 'Yer / ayrıntı', 'Düzey', 'Ad Soyad', 'İmza']].concat(L.map(g => [g.saat, g.gorev, g.yer, g.lv || '', g.ad || 'AÇIK – atanmadı', '']));
+    const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = [{ wch: 13 }, { wch: 26 }, { wch: 24 }, { wch: 7 }, { wch: 28 }, { wch: 22 }]; XLSX.utils.book_append_sheet(wb, ws, trT(t).replace(/\./g, '-')); });
+  if (!gunler.length) return bilgi('Görev listesi boş.');
+  XLSX.writeFile(wb, SD.ad + ' – Görev ve İmza Listesi (güncel).xlsx');
+}
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-tact]'); if (!el || el.disabled || !SD) return; const d = el.dataset;
+  try {
+    if (d.tact === 'onay') { const n = ($('#yNot-' + d.tid) || {}).value || '', t = SD.talep.liste.find(x => x.id === d.tid) || {}; if (!(await onayla((t.etki || 'Talep onaylansın mı?') + '\n\nOnaylıyor musunuz? İlgili hocalara bildirim yazılacak.', 'Onayla', 'Vazgeç'))) return; el.disabled = true; await yIslem('tlpOnayla', { tid: d.tid, not: n }); }
+    if (d.tact === 'ret') { const n = ($('#yNot-' + d.tid) || {}).value || ''; if (!(await onayla('Talep reddedilsin mi? Hocaya bildirim yazılacak.', 'Reddet', 'Vazgeç'))) return; el.disabled = true; await yIslem('tlpReddet', { tid: d.tid, not: n }); }
+    if (d.tact === 'aday' || d.tact === 'elleAday') { const g = d.tact === 'aday' ? d.g : ($('#yElle') || {}).value; if (!g) return bilgi('Görev seçin.'); if (d.tact === 'elleAday') yElle = g;
+      const r = await run('apiSinavIslem', ot, 'tlpAday', { id: SD.id, g }); if (r.hata) return bilgi(r.hata); yAday = { g, aday: r.aday || [] }; render(); }
+    if (d.tact === 'adayKapat') { yAday = null; render(); }
+    if (d.tact === 'ata' || d.tact === 'ataBaska') { const hid = d.tact === 'ata' ? d.hid : ($('#yBaska') || {}).value; if (!hid) return bilgi('Hoca seçin.');
+      const ad = d.tact === 'ata' ? d.ad : (SG.hocalar.find(h => h.id === hid) || {}).ad;
+      const et = await run('apiSinavIslem', ot, 'tlpEtki', { id: SD.id, g: d.g, hid }); if (et.hata) return bilgi(et.hata);
+      if (!(await onayla(ad + ' bu göreve atansın mı?\n\n' + et.etki + '\n\nİlgili hocalara portal bildirimi yazılacak.', 'Ata', 'Vazgeç'))) return; el.disabled = true;
+      const r = await yIslem('tlpAta', { g: d.g, hid }); if (r) { yAday = null; yElle = ''; } }
+    if (d.tact === 'degistiKapat') { if (!(await onayla('"Görev listesi değişti" işareti kaldırılsın mı? (Claude dokümanları yeniden ürettiyse)', 'Kaldır', 'Vazgeç'))) return; await yIslem('tlpDegistiKapat', {}); }
+    if (d.tact === 'listeIndir') yListeIndir();
+    if (d.tact === 'kesinlestir') { if (!(await onayla('Görev listesi şimdi kesinleşsin mi?\n\nHocalar artık gün değişikliği ve takas isteyemez, yalnız mazeret bildirebilir. Ardından hoca adlı dokümanları üretmem için bana haber verin.', 'Kesinleştir', 'Vazgeç'))) return; await yIslem('tlpKesinlestir', {}); }
+    if (d.tact === 'kesinGeri') { if (!(await onayla('Elle kesinleştirme kaldırılsın mı? Dokümanlar üretildiyse değişiklikler onları etkileyebilir.', 'Geri al', 'Vazgeç'))) return; await yIslem('tlpKesinGeriAl', {}); }
+  } catch (err) { bilgi((err && err.message) || String(err)); }
+});
 /* ---------- 8. Görevler ve e-postalar (19.11.2026) ---------- */
 let eTur = 'ogris', eTarih = '', eOn = null, eSec = new Set(), eEk = new Set(), eKonu = '', eMetin = '', eKayit = null, gListe = null, gOnizle = null, eOnceDahil = false;
-const GSUT = { e: /^(e-?posta|eposta|e-mail|email|mail)$/i, ad: /^(ad\s*soyad|adı\s*soyadı|hoca|öğretim elemanı|ad)$/i, tarih: /^tarih$/i, saat: /^saat$/i, gorev: /^(görev|gorev)$/i, yer: /^(yer|yer\s*\/\s*ayrıntı|derslik|ayrıntı)$/i, not: /^not$/i };
+const GSUT = { e: /^(e-?posta|eposta|e-mail|email|mail)$/i, ad: /^(ad\s*soyad|adı\s*soyadı|hoca|öğretim elemanı|ad)$/i, tarih: /^tarih$/i, saat: /^saat$/i, gorev: /^(görev|gorev)$/i, lv: /^(düzey|duzey|level)$/i, yer: /^(yer|yer\s*\/\s*ayrıntı|derslik|ayrıntı)$/i, not: /^not$/i };
 function gorevOku(rows) {
   for (let i = 0; i < Math.min(rows.length, 15); i++) { const r = rows[i].map(x => String(x == null ? '' : x).trim()), k = {};
     r.forEach((h, j) => { for (const [ad, re] of Object.entries(GSUT)) if (k[ad] == null && re.test(h)) k[ad] = j; });
@@ -698,7 +797,7 @@ function vEposta() {
       <div class="row" style="gap:8px;align-items:center"><button class="btn" data-sact="eGonder" ${eSec.size ? '' : 'disabled'}>Gönder (${eSec.size} kişi)</button><span class="small muted">Bugün kalan gönderim kotası: ${o.kota}</span></div></div>`;
   return `<details class="panel" ${det('ep', false)}><summary><b>8. Görevler ve e-postalar</b> <span class="small muted">(${G.satir ? G.kisi + ' hocaya ' + G.satir + ' görev' : 'görev listesi yok'})</span></summary><div class="stack" style="margin-top:8px">
     <div class="panel stack" style="gap:6px"><b class="small">Görev listesi</b>
-      <p class="small muted" style="margin:0">Görev dağılımını Claude hazırlar; Excel'i buradan yüklenir (sütunlar: E-posta, Ad Soyad, Tarih, Saat, Görev, Yer / ayrıntı). Yeni liste bu sınavın önceki görev listesinin yerine geçer.</p>
+      <p class="small muted" style="margin:0">Görev dağılımını Claude hazırlar; Excel'i buradan yüklenir (sütunlar: E-posta, Ad Soyad, Tarih, Saat, Görev, Yer / ayrıntı, Düzey – jüri düzey kuralı için). Yeni liste bu sınavın önceki görev listesinin yerine geçer.</p>
       <div class="small">${G.satir ? `${G.kisi} hoca · ${G.satir} görev · günler: ${G.gunler.map(g => sE(g.tr)).join(', ')}` : 'Henüz görev listesi yüklenmedi.'}</div>
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">Görev listesi (Excel)<input type="file" id="gDosya" accept=".xlsx,.xls,.csv"></label>${G.satir ? `<button class="btn sm ghost" data-sact="gGoster">${gListe ? 'Listeyi gizle' : 'Listeyi göster'}</button>` : ''}</div>
       ${gOnizle ? (gOnizle.hata ? `<div class="note n-bad small">${sE(gOnizle.hata)}</div>` : `<div class="note n-hl small">${sE(gOnizle.dosya)}: <b>${gOnizle.L.length}</b> satır (sütunlar: ${sE(gOnizle.kol)}). <button class="btn sm" data-sact="gKaydet">Görev listesini kaydet</button> <button class="btn sm ghost" data-sact="gVazgec">Vazgeç</button></div>`) : ''}
