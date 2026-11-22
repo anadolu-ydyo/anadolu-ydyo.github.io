@@ -761,6 +761,9 @@ document.addEventListener('click', async e => {
       const r = await yIslem('tlpAta', { g: d.g, hid }); if (r) { yAday = null; yElle = ''; } }
     if (d.tact === 'degistiKapat') { if (!(await onayla('"Görev listesi değişti" işareti kaldırılsın mı? (Claude dokümanları yeniden ürettiyse)', 'Kaldır', 'Vazgeç'))) return; await yIslem('tlpDegistiKapat', {}); }
     if (d.tact === 'listeIndir') yListeIndir();
+    if (d.tact === 'paket') { el.disabled = true; const r = await run('apiSinavIslem', ot, 'claudePaket', { id: SD.id }); el.disabled = false; if (r.hata || r.err) return bilgi(r.hata || r.err);
+      const blob = new Blob([JSON.stringify(r.paket, null, 1)], { type: 'application/json' }), u = URL.createObjectURL(blob), aa = document.createElement('a');
+      aa.href = u; aa.download = SD.ad + ' – Claude görev paketi (' + new Date().toLocaleDateString('tr-TR').replace(/\//g, '.') + ').json'; document.body.appendChild(aa); aa.click(); aa.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
     if (d.tact === 'kesinlestir') { if (!(await onayla('Görev listesi şimdi kesinleşsin mi?\n\nHocalar artık gün değişikliği ve takas isteyemez, yalnız mazeret bildirebilir. Ardından hoca adlı dokümanları üretmem için bana haber verin.', 'Kesinleştir', 'Vazgeç'))) return; await yIslem('tlpKesinlestir', {}); }
     if (d.tact === 'kesinGeri') { if (!(await onayla('Elle kesinleştirme kaldırılsın mı? Dokümanlar üretildiyse değişiklikler onları etkileyebilir.', 'Geri al', 'Vazgeç'))) return; await yIslem('tlpKesinGeriAl', {}); }
   } catch (err) { bilgi((err && err.message) || String(err)); }
@@ -798,6 +801,7 @@ function vEposta() {
   return `<details class="panel" ${det('ep', false)}><summary><b>8. Görevler ve e-postalar</b> <span class="small muted">(${G.satir ? G.kisi + ' hocaya ' + G.satir + ' görev' : 'görev listesi yok'})</span></summary><div class="stack" style="margin-top:8px">
     <div class="panel stack" style="gap:6px"><b class="small">Görev listesi</b>
       <p class="small muted" style="margin:0">Görev dağılımını Claude hazırlar; Excel'i buradan yüklenir (sütunlar: E-posta, Ad Soyad, Tarih, Saat, Görev, Yer / ayrıntı, Düzey – jüri düzey kuralı için). Yeni liste bu sınavın önceki görev listesinin yerine geçer.</p>
+      <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm ghost" data-tact="paket">Claude için görev dağılımı paketini indir</button><span class="small muted">Sınav ayarları, derslik başına aday sayıları, jüri planı, hocalar ve tercihler (öğrenci adı/numarası yok). İndirilen dosyayı sınavın "Sistem" klasörüne koyup Claude'a haber verin.</span></div>
       <div class="small">${G.satir ? `${G.kisi} hoca · ${G.satir} görev · günler: ${G.gunler.map(g => sE(g.tr)).join(', ')}` : 'Henüz görev listesi yüklenmedi.'}</div>
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="f">Görev listesi (Excel)<input type="file" id="gDosya" accept=".xlsx,.xls,.csv"></label>${G.satir ? `<button class="btn sm ghost" data-sact="gGoster">${gListe ? 'Listeyi gizle' : 'Listeyi göster'}</button>` : ''}</div>
       ${gOnizle ? (gOnizle.hata ? `<div class="note n-bad small">${sE(gOnizle.hata)}</div>` : `<div class="note n-hl small">${sE(gOnizle.dosya)}: <b>${gOnizle.L.length}</b> satır (sütunlar: ${sE(gOnizle.kol)}). <button class="btn sm" data-sact="gKaydet">Görev listesini kaydet</button> <button class="btn sm ghost" data-sact="gVazgec">Vazgeç</button></div>`) : ''}
