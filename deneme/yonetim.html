@@ -543,6 +543,9 @@ function vGorev() {
     <div class="stack" style="gap:2px">${ck(G + 'gecmisYuk', 'Geçmiş görev yüklerini dikkate al')}<span class="small muted">İşaretliyse önceki sınavlarda az görev alan hocalara önce görev verilir (yıl boyu denge). Boş bırakılırsa geçmişe bakılmaz; görevler bu sınavda hocalara mümkün olduğunca eşit (görev sayısı ve saat) dağıtılır.</span></div>
     <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end"><label class="f">Görev talepleri (gün değişikliği / takas) son günü${inp(G + 'talepSon', 'date', 'style="width:auto"')}</label><label class="f">saat${inp(G + 'talepSaat', 'time', 'style="width:auto"')}</label>
       <span class="small muted">Boş bırakılırsa ilk bölümden 4 gün önce. O andan sonra görev listesi kesinleşir: hocalar yalnız mazeret bildirebilir, Claude hoca adlı dokümanları üretir.</span></div>
+    <div class="stack" style="gap:4px">${ck(G + 'yalnizGonullu', 'Yalnız görev isteyen hocalar görev alır')}<span class="small muted">İşaretliyse görev yalnız tercihi "Görev istiyor" olan hocalara verilir (ör. Erasmus). Şu an ${Object.values(T).filter(x => x && x.t === 'istiyor').length} hoca "Görev istiyor" olarak işaretli.</span>
+      <details><summary class="small">Görev isteyenleri toplu işaretle</summary><div class="stack" style="gap:4px;margin-top:4px"><textarea id="gonListe" rows="4" placeholder="E-posta adreslerini ya da ad soyadları yapıştırın (her satıra bir kişi ya da virgülle ayrılmış)"></textarea>
+        <div class="row" style="gap:8px"><button class="btn sm" data-tact="gonIsaretle" type="button">"Görev istiyor" olarak işaretle</button><span class="small muted">Kaydetmeyi unutmayın.</span></div></div></details></div>
     <p class="small muted" style="margin:0">${sE(SD.birim)} üyeleri bu sınavda görev almaz (kendiliğinden). Görev dağılımını Claude yapar.</p>
     <input id="sAra" placeholder="Hoca ara…" value="${sE(sAra)}" style="max-width:260px">
     <div class="scroll" style="max-height:420px"><table><thead><tr><th>Hoca</th><th>Tercih</th><th>Not (ör. hangi görev / hangi gün)</th></tr></thead><tbody>
@@ -762,6 +765,14 @@ document.addEventListener('click', async e => {
       const r = await yIslem('tlpAta', { g: d.g, hid }); if (r) { yAday = null; yElle = ''; } }
     if (d.tact === 'degistiKapat') { if (!(await onayla('"Görev listesi değişti" işareti kaldırılsın mı? (Claude dokümanları yeniden ürettiyse)', 'Kaldır', 'Vazgeç'))) return; await yIslem('tlpDegistiKapat', {}); }
     if (d.tact === 'listeIndir') yListeIndir();
+    if (d.tact === 'gonIsaretle') { const ham = ($('#gonListe') || {}).value || '', muaf = new Set(SD.muaf || []), T = SX.gorev.tercih = SX.gorev.tercih || {};
+      const kucuk = x => String(x || '').toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim();
+      const parca = ham.split(/[\n,;\t]+/).map(x => x.trim()).filter(Boolean), bul = [], yok = [], birim = [];
+      parca.forEach(p => { const em = (p.match(/[\w.+-]+@[\w.-]+/) || [''])[0].toLowerCase(), k = kucuk(p.replace(/<[^>]*>/g, '').replace(em, ''));
+        const h = SG.hocalar.find(x => (em && (x.e || '').toLowerCase() === em) || (k && kucuk(x.ad) === k));
+        if (!h) yok.push(p); else if (muaf.has(h.e)) birim.push(h.ad); else { T[h.id] = { t: 'istiyor', not: (T[h.id] && T[h.id].not) || '' }; bul.push(h.ad); } });
+      sDegisti = true; render();
+      bilgi(bul.length + ' hoca "Görev istiyor" olarak işaretlendi.' + (birim.length ? '\n\nSınavın birim üyesi olduğu için işaretlenmedi: ' + birim.join(', ') : '') + (yok.length ? '\n\nBulunamadı (yazımı kontrol edin): ' + yok.join(', ') : '') + '\n\nDeğişiklikleri kaydedin.'); }
     if (d.tact === 'paket') { el.disabled = true; const r = await run('apiSinavIslem', ot, 'claudePaket', { id: SD.id }); el.disabled = false; if (r.hata || r.err) return bilgi(r.hata || r.err);
       const blob = new Blob([JSON.stringify(r.paket, null, 1)], { type: 'application/json' }), u = URL.createObjectURL(blob), aa = document.createElement('a');
       aa.href = u; aa.download = SD.ad + ' – Claude görev paketi (' + new Date().toLocaleDateString('tr-TR').replace(/\//g, '.') + ').json'; document.body.appendChild(aa); aa.click(); aa.remove(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
