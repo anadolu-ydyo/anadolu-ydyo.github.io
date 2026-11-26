@@ -918,7 +918,7 @@ function wFiltrele(tablo) {
     if (v.eks) { if (v.eks === 'tek') g = g && (eks === '1' || eks === '2'); else if (v.eks === 'tam') g = g && eks === 'tam'; else if (v.eks === 'yarim') g = g && eks !== 'tam'; else g = g && eks === v.eks; }
     r.style.display = g ? '' : 'none'; if (g) n++;
   });
-  const say = document.querySelector(`[data-wsay="${tablo}"]`); if (say) say.textContent = n + ' satır gösteriliyor';
+  const say = document.querySelector(`[data-wsay="${tablo}"]`); if (say) say.textContent = n + ' satır gösteriliyor.';
 }
 document.addEventListener('input', e => { const t = e.target.dataset && e.target.dataset.wft; if (t) wFiltrele(t); });
 document.addEventListener('change', e => { const t = e.target.dataset && e.target.dataset.wft; if (t) wFiltrele(t); });
