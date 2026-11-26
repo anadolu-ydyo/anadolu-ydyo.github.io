@@ -858,7 +858,7 @@ async function wTaramaGonder(liste) {
 }
 async function wTaramaBasla(dosyalar) {
   await wYukle(W_LIB2.jsqr);
-  wT = { calisiyor: true, sayfa: 0, okunan: 0, kaydedilen: 0, yeniden: 0, hatalar: [], okunamayan: [], kagitDegil: 0, durum: '' }; render();
+  wRaporSid = SD.id; wT = { calisiyor: true, sayfa: 0, okunan: 0, kaydedilen: 0, yeniden: 0, hatalar: [], okunamayan: [], kagitDegil: 0, durum: '' }; render();
   const sk = wSinavKodu(SD.id); let kuyruk = [];
   const bosMu = cv => { const c = wTuvalYeni(60, 85), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(cv, 0, 0, 60, 85); const d = x.getImageData(0, 0, 60, 85).data; let k = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 200) k++; return k < 15; };
   for (const f of dosyalar) {
@@ -885,6 +885,7 @@ async function wTaramaBasla(dosyalar) {
 function wDurumYaz() { const el = document.getElementById('wTDurum'); if (el && wT) el.textContent = `İşleniyor: ${wT.durum} · okunan ${wT.okunan} · kaydedilen ${wT.kaydedilen}`; }
 async function wRaporAl() { const r = await run('apiSinavIslem', ot, 'wKagitTaramaOzet', { id: SD.id }); if (!r.err && !r.hata) { wRapor = r.tarama; SD.writing.tarama = { kagit: r.tarama.kagit, tam: r.tarama.tam, yarim: r.tarama.yarim, hic: r.tarama.hic, sayfa: r.tarama.sayfa }; } }
 async function wElleKaydet() {
+  wT.okunamayan.forEach(u => { if (u.atla && !u.kaydedildi) { u.kaydedildi = true; u.atlandi = true; wT.kagitDegil++; } });
   const L = wT.okunamayan.filter(u => !u.atla && !u.kaydedildi), gec = [];
   for (const u of L) {
     if (!wNoGecerli(u.no)) return bilgi(u.kaynak + ': kâğıt numarası geçersiz (7 rakam, ör. 6487-862). Sayfadaki "NO:" yazısına bakın ya da "Kâğıt değil / atla"yı işaretleyin.');
@@ -892,19 +893,23 @@ async function wElleKaydet() {
     const c = wTuvalYeni(im.naturalWidth, im.naturalHeight); c.getContext('2d').drawImage(im, 0, 0);
     const h = wSayfaHazirla(c, null, { sayfa: Number(u.sayfa), ters: u.ters }); gec.push(Object.assign({ no: u.no.replace(/\D/g, ''), kaynak: u.kaynak, el: true }, h)); u.kaydedildi = true;
   }
-  if (gec.length) await wTaramaGonder(gec);
+  try { if (gec.length) await wTaramaGonder(gec); } catch (e) { gec.forEach(g => { const u = wT.okunamayan.find(x => x.kaynak === g.kaynak); if (u) u.kaydedildi = false; }); throw e; }
   await wRaporAl(); render();
 }
+let wRaporSid = '';
 function vWTarama() {
   const W = SD.writing, T = W.tarama; if (!W.kagit) return '';
+  if (T && T.sayfa && wRaporSid !== SD.id && !(wT && wT.calisiyor)) { wRaporSid = SD.id; wRapor = null; wT = null; wRaporAl().then(() => render()); }
   const oz = T ? `${T.tam} kâğıt tam (2 sayfa) · ${T.yarim} kâğıdın bir sayfası eksik · ${T.hic} kâğıt hiç taranmadı · sistemde ${T.sayfa} sayfa` : '';
-  const sat = (x, ek) => `<tr><td><a href="#" data-wgoster="${x.no}" data-ws="${ek === 2 ? 1 : 1}">${sE(x.noB)}</a></td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${ek ? 'sayfa ' + ek : 'iki sayfa'}</td></tr>`;
+  const sat = (x, ek) => `<tr><td>${ek === 0 ? sE(x.noB) : `<a href="#" data-wgoster="${x.no}" data-wsayfa="${ek === 1 ? 2 : 1}">${sE(x.noB)}</a>`}</td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${ek ? 'sayfa ' + ek : 'iki sayfa'}</td></tr>`;
   const rap = wRapor ? `<details class="panel" ${det('wtr', true)}><summary><b class="small">Eksik kâğıtlar</b> <span class="small muted">(${wRapor.yarimL.length + wRapor.hicL.length})</span></summary>
       ${wRapor.yarimL.length + wRapor.hicL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Eksik</th></tr>${wRapor.yarimL.map(x => sat(x, x.eksikSayfa)).join('')}${wRapor.hicL.map(x => sat(x, 0)).join('')}</table></div>
       <p class="small muted" style="margin:4px 0 0">Hiç taranmayanlar sınava girmemiş olabilir (yoklama listesine bakın). Eksik sayfa varsa o kâğıdı yeniden tarayıp yükleyin; yüklenen sayfa öncekinin yerine geçer.</p>` : '<p class="small" style="margin:6px 0 0">Eksik kâğıt yok.</p>'}</details>` : '';
+  const tl = wRapor && wRapor.taranL ? `<details class="panel" ${det('wtl', false)}><summary><b class="small">Taranan kâğıtlar</b> <span class="small muted">(${wRapor.taranL.length})</span></summary>
+      ${wRapor.taranL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Yüklenen sayfalar</th></tr>${wRapor.taranL.map(x => `<tr><td><a href="#" data-wgoster="${x.no}" data-wsayfa="${x.sayfalar[0]}">${sE(x.noB)}</a></td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${x.sayfalar.length === 2 ? '1 ve 2 (tam)' : 'yalnız ' + x.sayfalar[0]}</td></tr>`).join('')}</table></div>` : '<p class="small" style="margin:6px 0 0">Henüz taranan kâğıt yok.</p>'}</details>` : '';
   const T2 = wT, un = T2 ? T2.okunamayan.filter(u => !u.kaydedildi) : [];
   const ilerl = T2 ? `<div class="note ${T2.calisiyor ? 'n-hl' : 'n-ok'} small">${T2.calisiyor ? `<span id="wTDurum">İşleniyor: ${sE(T2.durum)} · okunan ${T2.okunan} · kaydedilen ${T2.kaydedilen}</span> – sayfayı kapatmayın.` :
-      `Bitti: ${T2.sayfa} sayfa işlendi · ${T2.kaydedilen} sayfa kaydedildi${T2.yeniden ? ' (' + T2.yeniden + ' sayfa öncekinin yerine)' : ''}${T2.kagitDegil ? ' · ' + T2.kagitDegil + ' boş sayfa atlandı' : ''}${un.length ? ' · <b>' + un.length + ' sayfanın karekodu okunamadı</b> (aşağıda)' : ''}${T2.hatalar.length ? ' · <b>' + T2.hatalar.length + ' sayfa kaydedilmedi</b>' : ''}`}</div>
+      `Bitti: ${T2.sayfa} sayfa işlendi · ${T2.kaydedilen} sayfa kaydedildi${T2.yeniden ? ' (' + T2.yeniden + ' sayfa öncekinin yerine)' : ''}${T2.kagitDegil ? ' · ' + T2.kagitDegil + ' boş / kâğıt olmayan sayfa atlandı' : ''}${un.length ? ' · <b>' + un.length + ' sayfanın karekodu okunamadı</b> (aşağıda)' : ''}${T2.hatalar.length ? ' · <b>' + T2.hatalar.length + ' sayfa kaydedilmedi</b>' : ''}`}</div>
       ${T2.hatalar.length ? `<div class="note n-hl small">${T2.hatalar.map(h => sE(h.kaynak + (h.noB ? ' (NO ' + h.noB + ')' : '') + ': ' + h.hata)).join('<br>')}</div>` : ''}
       ${!T2.calisiyor && un.length ? `<div class="panel stack" style="gap:8px"><b class="small">Karekodu okunamayan sayfalar</b><span class="small muted">Sayfadaki "NO:" yazısını girin ve sayfayı seçin. Kâğıt değilse "atla"yı işaretleyin.</span>
         ${un.map((u, i) => `<div class="row" style="gap:10px;align-items:flex-start;flex-wrap:wrap"><img src="${u.resim}" style="width:150px;border:1px solid #ccc;cursor:zoom-in" data-wbuyut="${i}">
@@ -917,7 +922,7 @@ function vWTarama() {
     <p class="small muted" style="margin:0">Taranmış PDF'leri (tek dosya ya da derslik derslik; sıra önemli değil) seçin. Sayfalar bu bilgisayarda işlenir: karekod okunur, ters taranmış sayfa düzeltilir, 1. sayfanın üstündeki öğrenci bilgileri kapatılır; sisteme yalnız sayfa resimleri gider. Tarama önerisi: 300 dpi, gri ya da siyah-beyaz. Aynı sayfa yeniden yüklenirse öncekinin yerine geçer (eskisi silinmez, "eski versiyonlar"a taşınır).</p>
     <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><input type="file" id="wTDosya" accept="application/pdf,image/jpeg,image/png" multiple ${T2 && T2.calisiyor ? 'disabled' : ''}>
       <button class="btn sm" data-wact="tara" ${T2 && T2.calisiyor ? 'disabled' : ''}>Yükle ve işle</button>${T && T.sayfa ? '<button class="btn sm ghost" data-wact="rapor">Eksik kâğıt raporunu yenile</button>' : ''}</div>
-    ${oz ? `<div class="small">${oz}</div>` : ''}${ilerl}${rap}</div></details>`;
+    ${oz ? `<div class="small">${oz}</div>` : ''}${ilerl}${tl}${rap}</div></details>`;
 }
 async function wGosterAc(no, sayfa, orj) {
   const r = await run('apiSinavIslem', ot, 'wKagitTaramaGoster', { id: SD.id, no, sayfa, orj }); if (r.err || r.hata) return bilgi(r.hata || r.err);
@@ -930,7 +935,7 @@ async function wGosterAc(no, sayfa, orj) {
 }
 function wGosterKapat() { const e = document.getElementById('wGosterKutu'); if (e) e.remove(); }
 document.addEventListener('click', async e => {
-  const g = e.target.closest('[data-wgoster]'); if (g) { e.preventDefault(); return wGosterAc(g.dataset.wgoster, 1, false); }
+  const g = e.target.closest('[data-wgoster]'); if (g) { e.preventDefault(); return wGosterAc(g.dataset.wgoster, Number(g.dataset.wsayfa) || 1, false); }
   const s = e.target.closest('[data-wgs]'); if (s) { if (s.dataset.wgs === 'kapat') return wGosterKapat(); const [n, p, o] = s.dataset.wgs.split('|'); return wGosterAc(n, Number(p), o === '1'); }
   const b = e.target.closest('[data-wbuyut]'); if (b && wT) { const u = wT.okunamayan.filter(x => !x.kaydedildi)[Number(b.dataset.wbuyut)]; if (u) { const w = window.open(''); if (w) w.document.write('<img src="' + u.resim + '" style="width:100%">'); } }
 });
