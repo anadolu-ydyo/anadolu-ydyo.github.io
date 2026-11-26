@@ -88,6 +88,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 /* TV */
 .tv{display:grid;gap:20px;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
 @media (max-width:860px){.tv{grid-template-columns:1fr}}
+.wkduz{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}@media (min-width:900px){.wkduz{grid-template-columns:minmax(0,1.7fr) minmax(270px,1fr)}}
 .qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
 #qr{background:#FFFFFF;padding:14px;border-radius:10px;line-height:0;min-height:40px}
 #qr img,#qr canvas{max-width:100%;height:auto}
@@ -518,6 +519,7 @@ function vMenu() {
   return `<div class="menu">
     <button data-act="pv" data-v="gorev"><b>Yaklaşan görevlerim</b><span>Gözetmenlik, jüri, writing grading ve yedeklik; tarih, saat, derslik · mazeret / değişiklik talebi${TH && TH.teklif.length ? ' · <b>' + TH.teklif.length + ' takas önerisi yanıt bekliyor</b>' : ''}</span></button>
     <button data-act="pv" data-v="speaking"><b>Speaking not girişi</b><span>Sınav günü jüri ekranı ve not girişi</span></button>
+    ${WK && WK.sinavlar.length ? `<button data-act="pv" data-v="wkagit"><b>Writing kâğıtlarım</b><span>${wkSay()}</span></button>` : ''}
     <button data-act="pv" data-v="writing"><b>Writing grading</b><span>Değerlendireceğiniz zarflar (first / second)</span></button>
     <button data-act="pv" data-v="gecmis"><b>Geçmiş görevler</b><span>Salt okunur</span></button>
     ${V.birimler && V.birimler.length ? `<button data-act="pv" data-v="birim"><b>Birim çalışmaları</b><span>${esc(V.birimler.join(', '))} – dosyalar ve mesajlar</span></button>` : ''}
@@ -635,13 +637,99 @@ function vWriting() {
   return `<div class="stack"><div class="panel stack" style="gap:8px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(z.cls)} · ${z.rol} grading</h2><button class="btn sm ghost" data-act="zarf" data-c="">Zarflara dön</button></div>${info}${ozet}${kagit}
     <p class="small muted">Kriterler: Content 5 · Organization 5 · Grammatical Competence 5 · Lexical Competence 5. Özel durumlar: ilgisiz yazı 5, kısa yazı 4, boş kâğıt 1, girmedi G.</p></div><div class="panel stack">${rows}${btn}</div></div>`;
 }
+/* ---------- Writing kâğıtlarım: taranmış kâğıtlar, kör grading (S19 4. adım; 27.11.2026) ----------
+ * Grader yalnız kâğıt numarasını ve öğrenci bilgileri kapatılmış sayfaları görür; eşinin adını ve notunu görmez. */
+let WK = null, wkA = null, wkF = null, wkMsg = '', wkHata = '', wkRes = {}, wkInd = '';
+async function wkYukle() { try { const r = await run('apiHocaWKagit', ot); if (!r.err) { WK = r; render(); } } catch (e) { } }
+function wkSay() { const L = WK.sinavlar.flatMap(x => x.kagit), p = L.filter(k => k.puan).length; return `${L.length} kâğıt · ${p} puanlandı${p < L.length ? ' · <b>' + (L.length - p) + ' bekliyor</b>' : ''}`; }
+const wkGrup = () => WK && wkA ? WK.sinavlar.find(x => x.sid === wkA.sid && x.rol === wkA.rol) : null;
+function wkPuanMetin(p) { if (!p) return ''; if (p.oz) { const o = WK.oz.find(x => x.k === p.oz); return 'Özel durum: ' + (o ? o.ad : p.oz); } return p.b.join(' · ') + ' = ' + p.b.reduce((a, v) => a + v, 0) + ' / 20'; }
+async function wkResim(sid, no, sayfa) {
+  const k = sid + '|' + no + '|' + sayfa; if (wkRes[k]) return;
+  wkRes[k] = 'yukleniyor';
+  try { const r = await run('apiHocaWKagitIslem', ot, 'goster', { sid, no, sayfa }); wkRes[k] = r.resim || ('hata:' + (r.hata || r.err || '')); } catch (e) { wkRes[k] = 'hata:' + ((e && e.message) || e); }
+  render(true);
+}
+function vWKagitH() {
+  if (!WK) return '<div class="panel muted">Writing kâğıtlarınız yükleniyor…</div>';
+  const g = wkGrup();
+  if (g && wkA.no) return vWKagitTek(g);
+  if (!WK.sinavlar.length) return '<div class="panel">Size atanmış writing kâğıdı yok.</div>';
+  return `<div class="stack">${wkMsg ? `<div class="note n-ok small">${esc(wkMsg)}</div>` : ''}${wkInd ? `<div class="note n-hl small">${esc(wkInd)}</div>` : ''}${WK.sinavlar.map(x => {
+    const p = x.kagit.filter(k => k.puan).length;
+    return `<div class="panel stack" style="gap:8px"><div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><h3 style="margin:0">${esc(x.sinav)} · writing ${esc(x.rolAd)}${x.lv ? ' · ' + esc(x.lv) + ' düzeyi' : ''}</h3>
+      <span class="pill ${p === x.kagit.length ? 'p-ok' : 'p-warn'}">${p} / ${x.kagit.length} kâğıt puanlandı</span></div>
+      ${x.tarih ? `<p class="small muted" style="margin:0">Görev tarihi: ${esc(x.tarih)}</p>` : ''}
+      <p class="small muted" style="margin:0">Kâğıtlarda öğrenci bilgisi yoktur; yalnız kâğıt numarası görünür. Notlandırma kördür: diğer grader'ın notunu görmezsiniz. Puanınızı kâğıt 3. grader'a gidene kadar değiştirebilirsiniz.</p>
+      <div class="scroll"><table><thead><tr><th>Kâğıt no</th><th>Sayfa</th><th>Puanınız</th><th></th></tr></thead><tbody>${x.kagit.map(k => `<tr><td class="mono"><b>${esc(k.noB)}</b></td><td class="small">${k.sayfa.length === 2 ? '2 sayfa' : k.sayfa.length ? 'yalnız ' + k.sayfa[0] + '. sayfa' : '–'}</td>
+        <td>${k.puan ? `<span class="pill p-ok">${esc(wkPuanMetin(k.puan))}</span>` : '<span class="pill p-warn">bekliyor</span>'}${k.kilit ? ' <span class="small muted">(3. grader\'da)</span>' : ''}</td>
+        <td><button class="btn sm${k.puan ? ' ghost' : ''}" data-act="wkAc" data-sid="${esc(x.sid)}" data-rol="${x.rol}" data-no="${k.no}">${k.puan ? 'Aç' : 'Puanla'}</button></td></tr>`).join('')}</tbody></table></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm ghost" data-act="wkPdf" data-sid="${esc(x.sid)}" data-rol="${x.rol}" data-hep="1">Bütün kâğıtlarımı indir (PDF)</button>${p < x.kagit.length && p ? `<button class="btn sm ghost" data-act="wkPdf" data-sid="${esc(x.sid)}" data-rol="${x.rol}" data-hep="0">Puanlanmamışları indir (PDF)</button>` : ''}</div>
+      <p class="small muted" style="margin:0">İndirilen PDF'te de öğrenci bilgileri kapatılmıştır. İndirme kayda geçer. Kâğıtları kimseyle paylaşmayın; işiniz bitince silin.</p></div>`; }).join('')}</div>`;
+}
+function vWKagitTek(g) {
+  const i = g.kagit.findIndex(k => k.no === wkA.no), k = g.kagit[i]; if (!k) { wkA.no = null; return vWKagitH(); }
+  if (!wkF || wkF.no !== k.no) wkF = { no: k.no, b: k.puan && k.puan.b ? k.puan.b.slice() : [0, 0, 0, 0], oz: k.puan ? k.puan.oz : '' };
+  const resim = p => { const r = wkRes[g.sid + '|' + k.no + '|' + p]; if (!r) { wkResim(g.sid, k.no, p); return '<div class="panel muted small">Sayfa ' + p + ' yükleniyor…</div>'; }
+    if (r === 'yukleniyor') return '<div class="panel muted small">Sayfa ' + p + ' yükleniyor…</div>'; if (r.startsWith('hata:')) return '<div class="note n-bad small">Sayfa ' + p + ': ' + esc(r.slice(5)) + '</div>';
+    return `<div><div class="small muted">NO ${esc(k.noB)} · sayfa ${p}</div><img src="${r}" alt="Kâğıt ${esc(k.noB)} sayfa ${p}" style="width:100%;border:1px solid var(--line, #ccc);background:#fff"></div>`; };
+  const bent = WK.bent.map((ad, j) => `<div><div class="small"><b>${esc(ad)}</b></div><div class="row" style="gap:4px;flex-wrap:nowrap">${[1, 2, 3, 4, 5].map(v => `<button class="btn sm${wkF.b[j] === v && !wkF.oz ? '' : ' ghost'}" style="min-width:38px" data-act="wkB" data-j="${j}" data-v="${v}" ${k.kilit ? 'disabled' : ''}>${v}</button>`).join('')}</div></div>`).join('');
+  const top = wkF.b.every(v => v) ? wkF.b.reduce((a, v) => a + v, 0) : null;
+  return `<div class="stack"><div class="panel row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="small muted">${esc(g.sinav)} · writing ${esc(g.rolAd)} · kâğıt ${i + 1} / ${g.kagit.length}</div><h2 style="margin:0" class="mono">NO ${esc(k.noB)}</h2></div>
+    <div class="row" style="gap:6px"><button class="btn sm ghost" data-act="wkGit" data-d="-1" ${i ? '' : 'disabled'}>‹ Önceki</button><button class="btn sm ghost" data-act="wkGit" data-d="1" ${i < g.kagit.length - 1 ? '' : 'disabled'}>Sonraki ›</button><button class="btn sm ghost" data-act="wkListe">Listeye dön</button></div></div>
+    <div class="wkduz">
+      <div class="stack">${k.sayfa.length ? k.sayfa.map(resim).join('') : '<div class="note n-hl">Bu kâğıdın sayfaları henüz taranmadı.</div>'}${k.sayfa.length === 1 ? `<div class="note n-hl small">Bu kâğıdın ${k.sayfa[0] === 1 ? '2.' : '1.'} sayfası henüz taranmadı. Sınav birimi yüklediğinde burada görünür.</div>` : ''}</div>
+      <div class="panel stack" style="gap:10px;align-self:start;position:sticky;top:8px">
+        ${k.kilit ? '<div class="note n-hl small">Bu kâğıt 3. grader\'a gitti; puanınız artık değiştirilemez.</div>' : ''}
+        ${bent}
+        <label class="f small" style="margin:0">Özel durum<select id="wkOz" ${k.kilit ? 'disabled' : ''}><option value="">Yok (normal puanlama)</option>${WK.oz.map(o => `<option value="${o.k}" ${wkF.oz === o.k ? 'selected' : ''}>${esc(o.ad)} → ${o.n}</option>`).join('')}</select></label>
+        <div class="small">${wkF.oz ? '<b>Özel durum seçildi</b>; bent puanları kaydedilmez.' : top != null ? `Toplam: <b>${top} / 20</b> (${top * 5} / 100)` : 'Dört bendin hepsini puanlayın.'}</div>
+        ${wkHata ? `<div class="note n-bad small">${esc(wkHata)}</div>` : ''}${wkMsg ? `<div class="note n-ok small">${esc(wkMsg)}</div>` : ''}
+        <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" data-act="wkKaydet" data-son="1" ${k.kilit ? 'disabled' : ''}>Kaydet ve sonraki</button><button class="btn ghost" data-act="wkKaydet" data-son="0" ${k.kilit ? 'disabled' : ''}>Kaydet</button></div>
+        ${k.puan ? `<div class="small muted">Kayıtlı puanınız: ${esc(wkPuanMetin(k.puan))}${k.zaman ? ' · ' + esc(k.zaman) : ''}</div>` : ''}
+        <p class="small muted" style="margin:0">Bentler: Content, Organization, Grammatical Competence, Lexical Competence (1–5). Ölçüt: AUSFL Writing Grading Criteria.</p></div></div></div>`;
+}
+function wkJs(src) { return new Promise((ok, no) => { if (window.jspdf) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('PDF kütüphanesi yüklenemedi; internet bağlantınızı kontrol edin.')); document.head.appendChild(s); }); }
+async function wkPdf(sid, rol, hep) {
+  const g = WK.sinavlar.find(x => x.sid === sid && x.rol === rol); if (!g) return;
+  const L = g.kagit.filter(k => k.sayfa.length && (hep || !k.puan)); if (!L.length) { wkInd = 'İndirilecek taranmış kâğıt yok.'; return render(true); }
+  try {
+    await wkJs('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }); let ilk = true;
+    for (let i = 0; i < L.length; i += 6) {
+      wkInd = `PDF hazırlanıyor: ${Math.min(i + 6, L.length)} / ${L.length} kâğıt…`; render(true);
+      const r = await run('apiHocaWKagitIslem', ot, 'indir', { sid, nos: L.slice(i, i + 6).map(k => k.no) }); if (r.err || r.hata) throw new Error(r.hata || r.err);
+      for (const k of r.kagit) for (const p of k.sayfalar) {
+        if (!ilk) doc.addPage(); ilk = false;
+        const im = await new Promise((ok, no) => { const x = new Image(); x.onload = () => ok(x); x.onerror = no; x.src = p.resim; });
+        const o = Math.min(200 / im.width, 282 / im.height), w = im.width * o, h = im.height * o; doc.addImage(p.resim, 'JPEG', (210 - w) / 2, 10, w, h);
+        doc.setFontSize(9); doc.text('NO: ' + k.noB + ' · sayfa ' + p.sayfa, 5, 6);
+      }
+    }
+    doc.save(g.sinav + ' – writing ' + g.rolAd + ' kâğıtları.pdf'); wkInd = L.length + ' kâğıt indirildi (öğrenci bilgileri kapatılmış).';
+  } catch (e) { wkInd = 'İndirme yapılamadı: ' + ((e && e.message) || e); }
+  render(true);
+}
+async function wkKaydet(sonraki) {
+  const g = wkGrup(), oz = ($('#wkOz') || {}).value || ''; wkF.oz = oz;
+  if (!oz && !wkF.b.every(v => v)) { wkHata = 'Dört bendin hepsini puanlayın ya da bir özel durum seçin.'; wkMsg = ''; return render(true); }
+  try { const r = await run('apiHocaWKagitIslem', ot, 'puan', { sid: g.sid, no: wkA.no, rol: g.rol, b: oz ? null : wkF.b, oz });
+    if (r.err === 'OTURUM') { ot = null; return yukle(); }
+    if (r.hata) { wkHata = r.hata; wkMsg = ''; if (r.sinavlar) WK = r; return render(true); }
+    WK = r; wkHata = ''; wkMsg = r.mesaj || ''; wkF = null;
+    if (sonraki) { const g2 = wkGrup(), i = g2.kagit.findIndex(k => k.no === wkA.no), sira = g2.kagit.slice(i + 1).concat(g2.kagit.slice(0, i)), n = sira.find(k => !k.puan);
+      if (n) wkA.no = n.no; else { wkA.no = null; wkMsg = 'Bütün kâğıtlarınızı puanladınız. Teşekkürler.'; } }
+    render(true); window.scrollTo(0, 0);
+  } catch (e) { hataGoster(e); }
+}
+document.addEventListener('change', e => { if (e.target && e.target.id === 'wkOz' && wkF) { wkF.oz = e.target.value; wkHata = ''; e.target.blur(); render(true); } });
 function render(force) {
   if (!force && (editing() || basili)) { bekle = true; return; }
   bekle = false;
   if (!V) { $('#ust').hidden = true; $('#app').innerHTML = vGiris(); return; }
   $('#ust').hidden = false; $('#baslik').textContent = V.ad;
   let b = '';
-  if (pv === 'gorev') b = vGorev(); else if (pv === 'speaking') b = vJuri(false); else if (pv === 'proj') b = vJuri(true); else if (pv === 'writing') b = vWriting();
+  if (pv === 'gorev') b = vGorev(); else if (pv === 'speaking') b = vJuri(false); else if (pv === 'proj') b = vJuri(true); else if (pv === 'writing') b = vWriting(); else if (pv === 'wkagit') b = vWKagitH();
   else if (pv === 'birim') b = vBirim();
   else if (pv === 'gecmis') b = '<div class="panel"><h3>Geçmiş görevler</h3><p class="muted">Tamamlanan sınav görevleriniz sınav döneminden sonra burada salt okunur olarak listelenir.</p></div>';
   else if (pv === 'anketS' || pv === 'anketW') b = vAnket(pv.slice(-1));
@@ -657,7 +745,7 @@ function render(force) {
 /* ---------- sunucu ---------- */
 async function yukle() {
   try {
-    if (ot) { const r = await run('apiHoca', ot); if (!r.err) { V = r; store.sset('ot:' + K, ot); render(); talepYukle(); return; } ot = null; store.sdel('ot:' + K); }
+    if (ot) { const r = await run('apiHoca', ot); if (!r.err) { V = r; store.sset('ot:' + K, ot); render(); talepYukle(); wkYukle(); return; } ot = null; store.sdel('ot:' + K); }
     const c = K && store.get(ckey());
     if (c) { const r = await run('apiHocaCihaz', K, c); if (r.oturum) { ot = r.oturum; store.sset('ot:' + K, ot); return yukle(); } store.del(ckey()); }
     if (EP) { giris.ad = ''; giris.ilk = false; V = null; render(true); return; }
@@ -707,7 +795,8 @@ document.addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b || b.disabled) return; const d = b.dataset;
   if (d.act !== 'arm' && d.act !== 'gelmedi') armed = null;
   switch (d.act) {
-    case 'pv': pv = d.v; zarfAcik = null; hAMesaj = ''; tMsg = ''; tHata = ''; if (pv === 'gorev') talepYukle(); if (pv === 'birim') { bMsg = ''; birimYukle(); } if (pv !== 'anketS' && pv !== 'anketW') hA = { l: [] }; return render(true);
+    case 'pv': if (d.v === 'wkagit') { wkA = null; wkMsg = ''; wkHata = ''; wkInd = ''; wkYukle(); }
+      pv = d.v; zarfAcik = null; hAMesaj = ''; tMsg = ''; tHata = ''; if (pv === 'gorev') talepYukle(); if (pv === 'birim') { bMsg = ''; birimYukle(); } if (pv !== 'anketS' && pv !== 'anketW') hA = { l: [] }; return render(true);
     case 'sorunAc': sorun = { acik: true, mesaj: '', tamam: false }; window.scrollTo(0, 0); return render(true);
     case 'sorunKapat': sorun = { acik: false, mesaj: '', tamam: false }; return render(true);
     case 'cikis': await run('apiCikis', ot).catch(() => { }); store.sdel('ot:' + K); store.del(ckey()); ot = null; V = null; pv = 'menu'; return yukle();
@@ -727,6 +816,12 @@ document.addEventListener('click', async e => {
     case 'tKabul': { const sel = document.getElementById('tk-' + d.id); if (!(await onayla('Takası kabul ediyorsunuz. Yönetim onaylarsa görevleriniz yer değiştirecek. Devam edilsin mi?', 'Kabul ediyorum', 'Vazgeç'))) return; b.disabled = true; return tIslem('takasYanit', { id: d.id, kabul: true, g: sel && sel.value }); }
     case 'tRed': if (!(await onayla('Takas önerisini kabul etmiyorsunuz. Emin misiniz?', 'Evet', 'Vazgeç'))) return; b.disabled = true; return tIslem('takasYanit', { id: d.id, kabul: false });
     case 'tOkudum': b.disabled = true; return tIslem('okudum', {});
+    case 'wkAc': wkA = { sid: d.sid, rol: Number(d.rol), no: d.no }; wkF = null; wkMsg = ''; wkHata = ''; window.scrollTo(0, 0); return render(true);
+    case 'wkListe': wkA = null; wkF = null; wkHata = ''; return render(true);
+    case 'wkGit': { const g = wkGrup(), i = g.kagit.findIndex(k => k.no === wkA.no), n = g.kagit[i + Number(d.d)]; if (n) { wkA.no = n.no; wkF = null; wkMsg = ''; wkHata = ''; } window.scrollTo(0, 0); return render(true); }
+    case 'wkB': wkF.b[Number(d.j)] = Number(d.v); wkF.oz = ''; wkHata = ''; return render(true);
+    case 'wkKaydet': b.disabled = true; return wkKaydet(d.son === '1');
+    case 'wkPdf': b.disabled = true; wkMsg = ''; return wkPdf(d.sid, Number(d.rol), d.hep === '1');
     case 'ek': b.disabled = true; return islem('ek', { j: V.juri.jid, k: Number(d.k) });
     case 'hesapla': b.disabled = true; return islem('hesapla', gonderilecek('S', d.no), 'msg-S-' + d.no, () => taslakSil('S', d.no));
     case 'wKaydet': b.disabled = true; return islem('wKaydet', gonderilecek('W', d.no), 'msg-W-' + d.no, () => taslakSil('W', d.no));

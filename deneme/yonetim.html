@@ -88,6 +88,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 /* TV */
 .tv{display:grid;gap:20px;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}
 @media (max-width:860px){.tv{grid-template-columns:1fr}}
+.wkduz{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}@media (min-width:900px){.wkduz{grid-template-columns:minmax(0,1.7fr) minmax(270px,1fr)}}
 .qrbox{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
 #qr{background:#FFFFFF;padding:14px;border-radius:10px;line-height:0;min-height:40px}
 #qr img,#qr canvas{max-width:100%;height:auto}
@@ -783,7 +784,7 @@ function vWKagit() {
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><button class="btn sm" data-wact="uret">Numaraları üret / güncelle</button>
       ${W.kagit ? `<label class="f small" style="margin:0">Derslik <select id="wDerslik" style="width:auto"><option value="">Tümü (tek dosya)</option>${(W.derslikler || []).map(d => `<option ${d === wDerslik ? 'selected' : ''}>${sE(d)}</option>`).join('')}</select></label>
       <button class="btn sm" data-wact="pdf">Cevap kâğıtlarını indir (PDF)</button><button class="btn sm ghost" data-wact="liste">Kâğıt numarası listesini indir (Excel, yalnız yönetim)</button>` : ''}</div>
-    <p class="small muted" style="margin:0">Basım: A4, çift taraflı (uzun kenardan çevirme), ölçek "gerçek boyut" (%100). Var olan numaralar yeniden üretimde değişmez; basılmış kâğıtlar geçerli kalır.</p>${vWTarama()}</div></details>`;
+    <p class="small muted" style="margin:0">Basım: A4, çift taraflı (uzun kenardan çevirme), ölçek "gerçek boyut" (%100). Var olan numaralar yeniden üretimde değişmez; basılmış kâğıtlar geçerli kalır.</p>${vWTarama()}${vWDagit()}</div></details>`;
 }
 /* ---------- Taranmış writing kâğıtlarını yükleme (S19 3. adım; 27.11.2026) ----------
  * PDF (ya da resim) bu bilgisayarda sayfa sayfa resme çevrilir (pdf.js), karekod okunur (jsQR), ters/yan sayfa döndürülür,
@@ -949,6 +950,23 @@ function vWTarama() {
       <button class="btn sm" data-wact="tara" ${T2 && T2.calisiyor ? 'disabled' : ''}>Yükle ve işle</button>${T && T.sayfa ? '<button class="btn sm ghost" data-wact="rapor">Eksik kâğıt raporunu yenile</button>' : ''}</div>
     ${oz ? `<div class="small">${oz}</div>` : ''}${ilerl}${tl}${rap}</div></details>`;
 }
+/* ---------- Kâğıtları grader'lara dağıtma (S19 4. adım; 27.11.2026) ---------- */
+let wGrad = null, wGradSid = '', wDMsg = '';
+async function wGradAl() { const r = await run('apiSinavIslem', ot, 'wKagitGradDurum', { id: SD.id }); if (!r.err && !r.hata) { wGrad = r.grad; wGradSid = SD.id; } }
+function vWDagit() {
+  const W = SD.writing, T = W.tarama; if (!W.kagit || !T || !T.sayfa) return '';
+  const G0 = W.grad; if (G0 && wGradSid !== SD.id) { wGradSid = SD.id; wGrad = null; wDMsg = ''; wGradAl().then(() => render()); }
+  const G = wGrad || G0;
+  const oz = G ? `${G.kagit} kâğıt dağıtıldı · grader-1 puanı ${G.puan1}/${G.kagit} · grader-2 puanı ${G.puan2}/${G.kagit} · not kesin ${G.tamam || 0} · 3. grader'a gidecek ${G.ucuncu || 0} · bildirim ${G.bildirim || 0} · bekliyor ${G.bekliyor || 0}` : '';
+  const tablo = wGrad && wGrad.grader ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Grader</th><th>Görev</th><th>Düzey</th><th>Atanan</th><th>Puanlanan</th><th>Farklı eş</th></tr>${wGrad.grader.map(g => `<tr><td>${sE(g.ad)}</td><td>grader-${g.rol}</td><td>${sE(g.lv || '–')}</td><td>${g.atanan}</td><td>${g.puan}</td><td>${g.es}</td></tr>`).join('')}</table></div>
+      <p class="small muted" style="margin:4px 0 0">"Farklı eş": o grader'ın kâğıtlarının giden olduğu karşı grup grader sayısı (eşler karışık). Grader'lar eşlerinin adını görmez.</p>` : '';
+  return `<details class="panel" ${det('wdg', !!G)}><summary><b class="small">Kâğıtları grader'lara dağıt</b> <span class="small muted">${G ? '(' + G.kagit + ' kâğıt dağıtıldı)' : '(henüz dağıtılmadı)'}</span></summary><div class="stack" style="margin-top:8px">
+    <p class="small muted" style="margin:0">Görev listesindeki "Writing grader-1" ve "Writing grader-2" satırlarına göre taranmış kâğıtlar kâğıt kâğıt bölüştürülür (hazırlıkta düzey düzey; satırdaki "· N kâğıt" payına göre). Eşler karışıktır: bir grader-1'in kâğıtları farklı grader-2'lere gider. Var olan atamalar değişmez; sonradan taranan kâğıtlar için yeniden "Dağıt" deyin. Görevi alınan (mazeret) grader'ın puanlamadığı kâğıtlar başkasına geçer. Hocalar kâğıtları portalda "Writing kâğıtlarım"da görür (portal bildirimi gider; e-posta gönderilmez).</p>
+    ${wDMsg ? `<div class="note n-ok small">${sE(wDMsg)}</div>` : ''}
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><label class="ck small"><input type="checkbox" id="wDYarim"> Bir sayfası eksik kâğıtları da dağıt</label>
+      <button class="btn sm" data-wact="dagit">${G ? 'Yeni kâğıtları dağıt' : 'Kâğıtları dağıt'}</button>${G ? '<button class="btn sm ghost" data-wact="gradDurum">Durumu yenile</button>' : ''}${G && !G.puan1 && !G.puan2 ? '<button class="btn sm ghost" data-wact="dagitSifir">Dağıtımı sıfırla ve yeniden dağıt</button>' : ''}</div>
+    ${oz ? `<div class="small">${oz}</div>` : ''}${tablo}</div></details>`;
+}
 async function wGosterAc(no, sayfa, orj) {
   const r = await run('apiSinavIslem', ot, 'wKagitTaramaGoster', { id: SD.id, no, sayfa, orj }); if (r.err || r.hata) return bilgi(r.hata || r.err);
   wGosterKapat(); const d = document.createElement('div'); d.id = 'wGosterKutu';
@@ -1060,6 +1078,12 @@ document.addEventListener('click', async e => {
     if (d.wact === 'elle') { el.disabled = true; try { await wElleKaydet(); } finally { el.disabled = false; } return; }
     if (d.wact === 'pdf') { el.disabled = true; el.textContent = 'Hazırlanıyor…'; try { await wPdf(); } finally { el.disabled = false; el.textContent = 'Cevap kâğıtlarını indir (PDF)'; } }
     if (d.wact === 'liste') await wListeIndir();
+    if (d.wact === 'dagit' || d.wact === 'dagitSifir') {
+      const sif = d.wact === 'dagitSifir', yar = !!(document.getElementById('wDYarim') || {}).checked;
+      if (!(await onayla(sif ? 'Önceki dağıtım silinip (eski olarak işaretlenip) kâğıtlar yeniden dağıtılsın mı?\n\nHenüz puan girilmedi.' : 'Taranmış kâğıtlar görev listesindeki grader-1 ve grader-2\'lere dağıtılsın mı?\n\nHocalara portal bildirimi gider; e-posta gönderilmez.', 'Dağıt', 'Vazgeç'))) return;
+      el.disabled = true; const r = await run('apiSinavIslem', ot, 'wKagitDagit', { id: SD.id, yarim: yar, sifirla: sif }); el.disabled = false; if (r.err || r.hata) return bilgi(r.hata || r.err);
+      if (r.sinav) { SD.writing = r.sinav.writing; SD.rev = r.sinav.rev; SD.gecmis = r.sinav.gecmis; } wGrad = r.grad; wGradSid = SD.id; wDMsg = r.mesaj || ''; render(); }
+    if (d.wact === 'gradDurum') { await wGradAl(); wDMsg = ''; render(); }
   } catch (err) { bilgi((err && err.message) || String(err)); }
 });
 function yListeIndir() {
