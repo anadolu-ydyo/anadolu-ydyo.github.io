@@ -783,8 +783,159 @@ function vWKagit() {
     <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><button class="btn sm" data-wact="uret">Numaraları üret / güncelle</button>
       ${W.kagit ? `<label class="f small" style="margin:0">Derslik <select id="wDerslik" style="width:auto"><option value="">Tümü (tek dosya)</option>${(W.derslikler || []).map(d => `<option ${d === wDerslik ? 'selected' : ''}>${sE(d)}</option>`).join('')}</select></label>
       <button class="btn sm" data-wact="pdf">Cevap kâğıtlarını indir (PDF)</button><button class="btn sm ghost" data-wact="liste">Kâğıt numarası listesini indir (Excel, yalnız yönetim)</button>` : ''}</div>
-    <p class="small muted" style="margin:0">Basım: A4, çift taraflı (uzun kenardan çevirme), ölçek "gerçek boyut" (%100). Var olan numaralar yeniden üretimde değişmez; basılmış kâğıtlar geçerli kalır.</p></div></details>`;
+    <p class="small muted" style="margin:0">Basım: A4, çift taraflı (uzun kenardan çevirme), ölçek "gerçek boyut" (%100). Var olan numaralar yeniden üretimde değişmez; basılmış kâğıtlar geçerli kalır.</p>${vWTarama()}</div></details>`;
 }
+/* ---------- Taranmış writing kâğıtlarını yükleme (S19 3. adım; 27.11.2026) ----------
+ * PDF (ya da resim) bu bilgisayarda sayfa sayfa resme çevrilir (pdf.js), karekod okunur (jsQR), ters/yan sayfa döndürülür,
+ * 1. sayfanın üst bölümü (öğrenci bilgileri, kalın çizgiye kadar) beyazla kapatılır; sayfalar 150 dpi gri JPEG olarak sisteme gönderilir. */
+const W_LIB2 = { pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js', pdfw: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js', jsqr: 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js' };
+let wT = null, wRapor = null, wGoster = null;
+function wSinavKodu(sid) { let h = 0; for (const c of String(sid)) h = (h * 31 + c.charCodeAt(0)) % 100000; return ('0' + (h % 100)).slice(-2); }
+const W_DAMM_T = [[0,3,1,7,5,9,8,6,4,2],[7,0,9,2,1,5,4,8,6,3],[4,2,0,6,8,7,1,3,5,9],[1,7,5,0,9,8,3,4,2,6],[6,1,2,3,0,4,5,9,7,8],[3,6,7,4,2,0,9,5,8,1],[5,8,6,9,7,2,0,1,3,4],[8,9,4,5,3,6,2,0,1,7],[9,4,3,8,6,1,7,2,0,5],[2,5,8,1,4,3,6,7,9,0]];
+function wNoGecerli(no) { no = String(no || '').replace(/\D/g, ''); if (no.length !== 7) return false; let x = 0; for (const c of no) x = W_DAMM_T[x][Number(c)]; return x === 0; }
+function wNoB(no) { no = String(no).replace(/\D/g, ''); return no.slice(0, 4) + '-' + no.slice(4); }
+function wTuvalYeni(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+/** Karekodu bul: üst bölge, alt bölge, tam sayfa; her biri olduğu gibi ve yarı boyutta. Döner { veri, tl, tr, bl, br } (tuval koordinatı) ya da null */
+function wQrBul(cv) {
+  const W = cv.width, H = cv.height, ctx = cv.getContext('2d', { willReadFrequently: true });
+  const B = [[0, 0, W, Math.round(H * 0.32)], [0, Math.round(H * 0.68), W, H - Math.round(H * 0.68)], [0, 0, W, H]];
+  for (const [x, y, w, h] of B) for (const k of [1, 0.5, 0.75]) {
+    let d;
+    if (k === 1) d = ctx.getImageData(x, y, w, h);
+    else { const c2 = wTuvalYeni(Math.round(w * k), Math.round(h * k)), x2 = c2.getContext('2d', { willReadFrequently: true }); x2.drawImage(cv, x, y, w, h, 0, 0, c2.width, c2.height); d = x2.getImageData(0, 0, c2.width, c2.height); }
+    const r = jsQR(d.data, d.width, d.height, { inversionAttempts: 'attemptBoth' });
+    if (r && /^W\d{10}$/.test(r.data)) { const f = p => ({ x: x + p.x / k, y: y + p.y / k }), L = r.location; return { veri: r.data, tl: f(L.topLeftCorner), tr: f(L.topRightCorner), bl: f(L.bottomLeftCorner), br: f(L.bottomRightCorner) }; }
+  }
+  return null;
+}
+function wDondur(cv, aci) {
+  aci = ((aci % 360) + 360) % 360; if (!aci) return cv;
+  const c = aci === 180 ? wTuvalYeni(cv.width, cv.height) : wTuvalYeni(cv.height, cv.width), x = c.getContext('2d');
+  x.translate(c.width / 2, c.height / 2); x.rotate(aci * Math.PI / 180); x.drawImage(cv, -cv.width / 2, -cv.height / 2); return c;
+}
+/** Sayfayı düzelt (karekoda göre döndür), 1. sayfada üst bölümü kapat, 150 dpi gri JPEG üret */
+function wSayfaHazirla(cv, q, elle) {
+  let don = 0;
+  if (q) { const a = Math.atan2(q.tr.y - q.tl.y, q.tr.x - q.tl.x) * 180 / Math.PI; don = ((-Math.round(a / 90) * 90) % 360 + 360) % 360; }
+  if (elle && elle.ters) don = 180;
+  const N = wDondur(cv, don), q2 = (q && don) ? wQrBul(N) : q, sayfa = elle ? elle.sayfa : Number(q.veri.slice(-1));
+  const olc = Math.min(1, 1240 / N.width), C = wTuvalYeni(Math.round(N.width * olc), Math.round(N.height * olc)), x = C.getContext('2d');
+  x.filter = 'grayscale(1)'; x.drawImage(N, 0, 0, C.width, C.height); x.filter = 'none';
+  const orj = sayfa === 1 ? C.toDataURL('image/jpeg', 0.72) : '';
+  if (sayfa === 1) {
+    let alt;
+    if (q2) { const s = Math.hypot(q2.tr.x - q2.tl.x, q2.tr.y - q2.tl.y) / 11.76, qa = Math.max(q2.bl.y, q2.br.y); alt = (qa + 3.2 * s) * olc; }   // karekodun altı + kalın çizgi (≈3 mm)
+    else alt = C.height * 54 / 297;
+    x.fillStyle = '#fff'; x.fillRect(0, 0, C.width, Math.round(alt));
+    x.fillStyle = '#888'; x.font = Math.round(C.width / 60) + 'px Arial'; x.fillText('Öğrenci bilgileri kapatıldı', 12, Math.round(alt) - 10);
+  }
+  return { img: C.toDataURL('image/jpeg', 0.72), orj, don, sayfa };
+}
+async function wPdfSayfalari(dosya, her) {
+  const ad = dosya.name;
+  if (/^image\//.test(dosya.type)) {
+    const url = URL.createObjectURL(dosya), im = new Image(); await new Promise((ok, no) => { im.onload = ok; im.onerror = () => no(new Error(ad + ' açılamadı')); im.src = url; });
+    const c = wTuvalYeni(im.naturalWidth, im.naturalHeight); c.getContext('2d').drawImage(im, 0, 0); URL.revokeObjectURL(url); await her(c, ad, 1, 1); return;
+  }
+  await wYukle(W_LIB2.pdf);
+  if (!window.__wPdfIsci) { try { window.__wPdfIsci = URL.createObjectURL(new Blob([await (await fetch(W_LIB2.pdfw)).text()], { type: 'text/javascript' })); } catch (e) { window.__wPdfIsci = W_LIB2.pdfw; } }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = window.__wPdfIsci;
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(await dosya.arrayBuffer()) }).promise;
+  for (let p = 1; p <= doc.numPages; p++) {
+    const pg = await doc.getPage(p), v0 = pg.getViewport({ scale: 1 }), olc = Math.min(200 / 72, 1800 / Math.min(v0.width, v0.height)), v = pg.getViewport({ scale: olc });
+    const c = wTuvalYeni(Math.round(v.width), Math.round(v.height)), x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    await pg.render({ canvasContext: x, viewport: v }).promise; pg.cleanup(); await her(c, ad, p, doc.numPages);
+  }
+  await doc.destroy();
+}
+async function wTaramaGonder(liste) {
+  for (let i = 0; i < liste.length; i += 6) {
+    const parca = liste.slice(i, i + 6), r = await run('apiSinavIslem', ot, 'wKagitTarama', { id: SD.id, sayfalar: parca.map(p => ({ no: p.no, sayfa: p.sayfa, img: p.img, orj: p.orj, kaynak: p.kaynak, don: p.don, el: p.el })) });
+    if (r.err || r.hata) { parca.forEach(p => wT.hatalar.push({ kaynak: p.kaynak, hata: r.hata || r.err })); continue; }
+    r.sonuc.forEach((x, j) => { const p = parca[x.i]; if (x.ok) { wT.kaydedilen++; if (x.yeniden) wT.yeniden++; } else wT.hatalar.push({ kaynak: p.kaynak, hata: x.hata, noB: wNoB(p.no) }); });
+    if (r.ozet) SD.writing.tarama = r.ozet;
+  }
+}
+async function wTaramaBasla(dosyalar) {
+  await wYukle(W_LIB2.jsqr);
+  wT = { calisiyor: true, sayfa: 0, okunan: 0, kaydedilen: 0, yeniden: 0, hatalar: [], okunamayan: [], kagitDegil: 0, durum: '' }; render();
+  const sk = wSinavKodu(SD.id); let kuyruk = [];
+  const bosMu = cv => { const c = wTuvalYeni(60, 85), x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(cv, 0, 0, 60, 85); const d = x.getImageData(0, 0, 60, 85).data; let k = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 200) k++; return k < 15; };
+  for (const f of dosyalar) {
+    try {
+      await wPdfSayfalari(f, async (cv, ad, p, n) => {
+        wT.sayfa++; wT.durum = ad + ' – sayfa ' + p + '/' + n; wDurumYaz();
+        const kaynak = ad + ' s.' + p, q = wQrBul(cv);
+        if (!q) {
+          if (bosMu(cv)) { wT.kagitDegil++; return; }
+          const olc = Math.min(1, 1240 / cv.width), C = wTuvalYeni(Math.round(cv.width * olc), Math.round(cv.height * olc)); C.getContext('2d').drawImage(cv, 0, 0, C.width, C.height);
+          wT.okunamayan.push({ kaynak, resim: C.toDataURL('image/jpeg', 0.7), no: '', sayfa: '1', ters: false, atla: false }); return;
+        }
+        const sKod = q.veri.slice(1, 3), no = q.veri.slice(3, 10);
+        if (sKod !== sk) { wT.hatalar.push({ kaynak, hata: 'Başka bir sınavın kâğıdı (karekod bu sınava ait değil).', noB: wNoB(no) }); return; }
+        if (!wNoGecerli(no)) { wT.hatalar.push({ kaynak, hata: 'Karekoddaki numara geçersiz.' }); return; }
+        wT.okunan++; const h = wSayfaHazirla(cv, q); kuyruk.push(Object.assign({ no, kaynak }, h));
+        if (kuyruk.length >= 6) { const k = kuyruk; kuyruk = []; await wTaramaGonder(k); }
+      });
+    } catch (e) { wT.hatalar.push({ kaynak: f.name, hata: 'Dosya okunamadı: ' + ((e && e.message) || e) }); }
+  }
+  if (kuyruk.length) await wTaramaGonder(kuyruk);
+  wT.calisiyor = false; wT.durum = ''; await wRaporAl(); render();
+}
+function wDurumYaz() { const el = document.getElementById('wTDurum'); if (el && wT) el.textContent = `İşleniyor: ${wT.durum} · okunan ${wT.okunan} · kaydedilen ${wT.kaydedilen}`; }
+async function wRaporAl() { const r = await run('apiSinavIslem', ot, 'wKagitTaramaOzet', { id: SD.id }); if (!r.err && !r.hata) { wRapor = r.tarama; SD.writing.tarama = { kagit: r.tarama.kagit, tam: r.tarama.tam, yarim: r.tarama.yarim, hic: r.tarama.hic, sayfa: r.tarama.sayfa }; } }
+async function wElleKaydet() {
+  const L = wT.okunamayan.filter(u => !u.atla && !u.kaydedildi), gec = [];
+  for (const u of L) {
+    if (!wNoGecerli(u.no)) return bilgi(u.kaynak + ': kâğıt numarası geçersiz (7 rakam, ör. 6487-862). Sayfadaki "NO:" yazısına bakın ya da "Kâğıt değil / atla"yı işaretleyin.');
+    const im = new Image(); await new Promise(ok => { im.onload = ok; im.src = u.resim; });
+    const c = wTuvalYeni(im.naturalWidth, im.naturalHeight); c.getContext('2d').drawImage(im, 0, 0);
+    const h = wSayfaHazirla(c, null, { sayfa: Number(u.sayfa), ters: u.ters }); gec.push(Object.assign({ no: u.no.replace(/\D/g, ''), kaynak: u.kaynak, el: true }, h)); u.kaydedildi = true;
+  }
+  if (gec.length) await wTaramaGonder(gec);
+  await wRaporAl(); render();
+}
+function vWTarama() {
+  const W = SD.writing, T = W.tarama; if (!W.kagit) return '';
+  const oz = T ? `${T.tam} kâğıt tam (2 sayfa) · ${T.yarim} kâğıdın bir sayfası eksik · ${T.hic} kâğıt hiç taranmadı · sistemde ${T.sayfa} sayfa` : '';
+  const sat = (x, ek) => `<tr><td><a href="#" data-wgoster="${x.no}" data-ws="${ek === 2 ? 1 : 1}">${sE(x.noB)}</a></td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${ek ? 'sayfa ' + ek : 'iki sayfa'}</td></tr>`;
+  const rap = wRapor ? `<details class="panel" ${det('wtr', true)}><summary><b class="small">Eksik kâğıtlar</b> <span class="small muted">(${wRapor.yarimL.length + wRapor.hicL.length})</span></summary>
+      ${wRapor.yarimL.length + wRapor.hicL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Eksik</th></tr>${wRapor.yarimL.map(x => sat(x, x.eksikSayfa)).join('')}${wRapor.hicL.map(x => sat(x, 0)).join('')}</table></div>
+      <p class="small muted" style="margin:4px 0 0">Hiç taranmayanlar sınava girmemiş olabilir (yoklama listesine bakın). Eksik sayfa varsa o kâğıdı yeniden tarayıp yükleyin; yüklenen sayfa öncekinin yerine geçer.</p>` : '<p class="small" style="margin:6px 0 0">Eksik kâğıt yok.</p>'}</details>` : '';
+  const T2 = wT, un = T2 ? T2.okunamayan.filter(u => !u.kaydedildi) : [];
+  const ilerl = T2 ? `<div class="note ${T2.calisiyor ? 'n-hl' : 'n-ok'} small">${T2.calisiyor ? `<span id="wTDurum">İşleniyor: ${sE(T2.durum)} · okunan ${T2.okunan} · kaydedilen ${T2.kaydedilen}</span> – sayfayı kapatmayın.` :
+      `Bitti: ${T2.sayfa} sayfa işlendi · ${T2.kaydedilen} sayfa kaydedildi${T2.yeniden ? ' (' + T2.yeniden + ' sayfa öncekinin yerine)' : ''}${T2.kagitDegil ? ' · ' + T2.kagitDegil + ' boş sayfa atlandı' : ''}${un.length ? ' · <b>' + un.length + ' sayfanın karekodu okunamadı</b> (aşağıda)' : ''}${T2.hatalar.length ? ' · <b>' + T2.hatalar.length + ' sayfa kaydedilmedi</b>' : ''}`}</div>
+      ${T2.hatalar.length ? `<div class="note n-hl small">${T2.hatalar.map(h => sE(h.kaynak + (h.noB ? ' (NO ' + h.noB + ')' : '') + ': ' + h.hata)).join('<br>')}</div>` : ''}
+      ${!T2.calisiyor && un.length ? `<div class="panel stack" style="gap:8px"><b class="small">Karekodu okunamayan sayfalar</b><span class="small muted">Sayfadaki "NO:" yazısını girin ve sayfayı seçin. Kâğıt değilse "atla"yı işaretleyin.</span>
+        ${un.map((u, i) => `<div class="row" style="gap:10px;align-items:flex-start;flex-wrap:wrap"><img src="${u.resim}" style="width:150px;border:1px solid #ccc;cursor:zoom-in" data-wbuyut="${i}">
+          <div class="stack" style="gap:4px"><span class="small">${sE(u.kaynak)}</span><label class="f small" style="margin:0">Kâğıt no<input data-wun="${i}" data-alan="no" value="${sE(u.no)}" placeholder="6487-862" style="width:110px"></label>
+          <label class="f small" style="margin:0">Sayfa<select data-wun="${i}" data-alan="sayfa" style="width:auto"><option ${u.sayfa === '1' ? 'selected' : ''}>1</option><option ${u.sayfa === '2' ? 'selected' : ''}>2</option></select></label>
+          <label class="ck small"><input type="checkbox" data-wun="${i}" data-alan="ters" ${u.ters ? 'checked' : ''}> Ters taranmış (180° çevir)</label>
+          <label class="ck small"><input type="checkbox" data-wun="${i}" data-alan="atla" ${u.atla ? 'checked' : ''}> Kâğıt değil / atla</label></div></div>`).join('')}
+        <div><button class="btn sm" data-wact="elle">Bu sayfaları kaydet</button></div></div>` : ''}` : '';
+  return `<details class="panel" ${det('wtar', !!(T && T.sayfa))}><summary><b class="small">Taranmış kâğıtları yükle</b> <span class="small muted">${T && T.sayfa ? '(' + T.tam + '/' + T.kagit + ' kâğıt tam)' : '(henüz yüklenmedi)'}</span></summary><div class="stack" style="margin-top:8px">
+    <p class="small muted" style="margin:0">Taranmış PDF'leri (tek dosya ya da derslik derslik; sıra önemli değil) seçin. Sayfalar bu bilgisayarda işlenir: karekod okunur, ters taranmış sayfa düzeltilir, 1. sayfanın üstündeki öğrenci bilgileri kapatılır; sisteme yalnız sayfa resimleri gider. Tarama önerisi: 300 dpi, gri ya da siyah-beyaz. Aynı sayfa yeniden yüklenirse öncekinin yerine geçer (eskisi silinmez, "eski versiyonlar"a taşınır).</p>
+    <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><input type="file" id="wTDosya" accept="application/pdf,image/jpeg,image/png" multiple ${T2 && T2.calisiyor ? 'disabled' : ''}>
+      <button class="btn sm" data-wact="tara" ${T2 && T2.calisiyor ? 'disabled' : ''}>Yükle ve işle</button>${T && T.sayfa ? '<button class="btn sm ghost" data-wact="rapor">Eksik kâğıt raporunu yenile</button>' : ''}</div>
+    ${oz ? `<div class="small">${oz}</div>` : ''}${ilerl}${rap}</div></details>`;
+}
+async function wGosterAc(no, sayfa, orj) {
+  const r = await run('apiSinavIslem', ot, 'wKagitTaramaGoster', { id: SD.id, no, sayfa, orj }); if (r.err || r.hata) return bilgi(r.hata || r.err);
+  wGosterKapat(); const d = document.createElement('div'); d.id = 'wGosterKutu';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px';
+  d.innerHTML = `<div style="background:#fff;padding:12px;border-radius:8px;max-width:900px"><div class="row" style="gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap"><b>NO ${sE(r.noB)} · sayfa ${r.sayfa}${r.orj ? ' · ORİJİNAL (yalnız yönetim)' : ''}</b><span class="small muted">${sE(r.okuma || '')} · ${sE(r.kaynak || '')}</span>
+    <button class="btn sm ghost" data-wgs="${no}|1|0">Sayfa 1</button><button class="btn sm ghost" data-wgs="${no}|2|0">Sayfa 2</button><button class="btn sm ghost" data-wgs="${no}|1|1">Sayfa 1 orijinal</button><button class="btn sm" data-wgs="kapat">Kapat</button></div>
+    <img src="${r.resim}" style="width:100%;border:1px solid #ccc"></div>`;
+  document.body.appendChild(d);
+}
+function wGosterKapat() { const e = document.getElementById('wGosterKutu'); if (e) e.remove(); }
+document.addEventListener('click', async e => {
+  const g = e.target.closest('[data-wgoster]'); if (g) { e.preventDefault(); return wGosterAc(g.dataset.wgoster, 1, false); }
+  const s = e.target.closest('[data-wgs]'); if (s) { if (s.dataset.wgs === 'kapat') return wGosterKapat(); const [n, p, o] = s.dataset.wgs.split('|'); return wGosterAc(n, Number(p), o === '1'); }
+  const b = e.target.closest('[data-wbuyut]'); if (b && wT) { const u = wT.okunamayan.filter(x => !x.kaydedildi)[Number(b.dataset.wbuyut)]; if (u) { const w = window.open(''); if (w) w.document.write('<img src="' + u.resim + '" style="width:100%">'); } }
+});
+document.addEventListener('input', e => { const i = e.target.dataset && e.target.dataset.wun; if (i == null || !wT) return; const u = wT.okunamayan.filter(x => !x.kaydedildi)[Number(i)], al = e.target.dataset.alan; if (u && (al === 'no')) u.no = e.target.value; });
+document.addEventListener('change', e => { const i = e.target.dataset && e.target.dataset.wun; if (i == null || !wT) return; const u = wT.okunamayan.filter(x => !x.kaydedildi)[Number(i)], al = e.target.dataset.alan; if (!u) return; if (al === 'sayfa') u.sayfa = e.target.value; else if (al === 'ters' || al === 'atla') u[al] = e.target.checked; });
 function wQr(doc, metin, x, y, w) {
   const d = document.createElement('div'), q = new QRCode(d, { text: metin, width: 64, height: 64, correctLevel: QRCode.CorrectLevel.Q }), m = q._oQRCode, n = m.getModuleCount(), s = w / (n + 4);
   doc.setFillColor(255, 255, 255); doc.rect(x, y, w, w, 'F'); doc.setFillColor(0, 0, 0);
@@ -874,6 +1025,9 @@ document.addEventListener('click', async e => {
       if (r.sinav) { SD.writing = r.sinav.writing; SD.rev = r.sinav.rev; SD.gecmis = r.sinav.gecmis; } wMsg = r.mesaj || ''; render(); }
     if (d.wact === 'ayar') { el.disabled = true; const r = await run('apiSinavIslem', ot, 'wKagitAyar', { id: SD.id, rev: SD.rev, ayar: wAy }); el.disabled = false; if (r.err || r.hata) return bilgi(r.hata || r.err);
       if (r.sinav) { SD.writing = r.sinav.writing; SD.rev = r.sinav.rev; SD.gecmis = r.sinav.gecmis; SD.cfg.yazmaKagit = r.sinav.cfg.yazmaKagit; if (SX) SX.yazmaKagit = r.sinav.cfg.yazmaKagit; } wAy = null; wMsg = r.mesaj || ''; render(); }
+    if (d.wact === 'tara') { const f = document.getElementById('wTDosya'); if (!f || !f.files.length) return bilgi('Önce taranmış PDF dosyalarını seçin.'); const L = [...f.files]; wRapor = null; try { await wTaramaBasla(L); } catch (er) { if (wT) { wT.calisiyor = false; wT.hatalar.push({ kaynak: 'İşlem', hata: (er && er.message) || String(er) }); } render(); } return; }
+    if (d.wact === 'rapor') { await wRaporAl(); render(); return; }
+    if (d.wact === 'elle') { el.disabled = true; try { await wElleKaydet(); } finally { el.disabled = false; } return; }
     if (d.wact === 'pdf') { el.disabled = true; el.textContent = 'Hazırlanıyor…'; try { await wPdf(); } finally { el.disabled = false; el.textContent = 'Cevap kâğıtlarını indir (PDF)'; } }
     if (d.wact === 'liste') await wListeIndir();
   } catch (err) { bilgi((err && err.message) || String(err)); }
