@@ -897,16 +897,41 @@ async function wElleKaydet() {
   await wRaporAl(); render();
 }
 let wRaporSid = '';
+/** Tablo süzgeci (eksik / taranan kâğıtlar): kâğıt no, ad, öğrenci no yazılarak; derslik ve eksik sayfa seçilerek daraltılır. Yeniden çizmeden satır gizler. */
+function wFiltreSatiri(tablo, L, eksikSutun) {
+  const dl = [...new Set(L.map(x => x.derslik).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+  const i = (k, ph) => `<input data-wft="${tablo}" data-wfk="${k}" placeholder="${ph}" style="width:100%;min-width:70px;padding:3px 5px">`;
+  return `<tr class="wfiltre"><td>${i('no', 'ara…')}</td><td>${i('ad', 'ad soyad…')}</td><td>${i('ogr', 'numara…')}</td>
+    <td><select data-wft="${tablo}" data-wfk="der" style="width:auto"><option value="">Tümü</option>${dl.map(d => `<option>${sE(d)}</option>`).join('')}</select></td><td></td>
+    <td>${eksikSutun ? `<select data-wft="${tablo}" data-wfk="eks" style="width:auto"><option value="">Tümü</option><option value="tek">Bir sayfa (1 ya da 2)</option><option value="1">Sayfa 1</option><option value="2">Sayfa 2</option><option value="0">İki sayfa</option></select>` :
+      `<select data-wft="${tablo}" data-wfk="eks" style="width:auto"><option value="">Tümü</option><option value="tam">Tam</option><option value="yarim">Yalnız bir sayfa</option></select>`}</td></tr>`;
+}
+function wFiltrele(tablo) {
+  const t = document.querySelector(`table[data-wtablo="${tablo}"]`); if (!t) return;
+  const v = {}; t.querySelectorAll('[data-wfk]').forEach(e => { v[e.dataset.wfk] = String(e.value || '').trim().toLocaleLowerCase('tr'); });
+  let n = 0; t.querySelectorAll('tr[data-fno]').forEach(r => {
+    const d = r.dataset, eks = d.feks; let g = true;
+    if (v.no && !d.fno.replace('-', '').includes(v.no.replace('-', ''))) g = false;
+    if (v.ad && !d.fad.includes(v.ad)) g = false;
+    if (v.ogr && !d.fogr.includes(v.ogr)) g = false;
+    if (v.der && d.fder.toLocaleLowerCase('tr') !== v.der) g = false;
+    if (v.eks) { if (v.eks === 'tek') g = g && (eks === '1' || eks === '2'); else if (v.eks === 'tam') g = g && eks === 'tam'; else if (v.eks === 'yarim') g = g && eks !== 'tam'; else g = g && eks === v.eks; }
+    r.style.display = g ? '' : 'none'; if (g) n++;
+  });
+  const say = document.querySelector(`[data-wsay="${tablo}"]`); if (say) say.textContent = n + ' satır gösteriliyor';
+}
+document.addEventListener('input', e => { const t = e.target.dataset && e.target.dataset.wft; if (t) wFiltrele(t); });
+document.addEventListener('change', e => { const t = e.target.dataset && e.target.dataset.wft; if (t) wFiltrele(t); });
 function vWTarama() {
   const W = SD.writing, T = W.tarama; if (!W.kagit) return '';
   if (T && T.sayfa && wRaporSid !== SD.id && !(wT && wT.calisiyor)) { wRaporSid = SD.id; wRapor = null; wT = null; wRaporAl().then(() => render()); }
   const oz = T ? `${T.tam} kâğıt tam (2 sayfa) · ${T.yarim} kâğıdın bir sayfası eksik · ${T.hic} kâğıt hiç taranmadı · sistemde ${T.sayfa} sayfa` : '';
-  const sat = (x, ek) => `<tr><td>${ek === 0 ? sE(x.noB) : `<a href="#" data-wgoster="${x.no}" data-wsayfa="${ek === 1 ? 2 : 1}">${sE(x.noB)}</a>`}</td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${ek ? 'sayfa ' + ek : 'iki sayfa'}</td></tr>`;
+  const sat = (x, ek) => `<tr data-fno="${sE(x.noB)}" data-fad="${sE(String(x.ad).toLocaleLowerCase('tr'))}" data-fogr="${sE(x.ogr)}" data-fder="${sE(x.derslik)}" data-feks="${ek || 0}"><td>${ek === 0 ? sE(x.noB) : `<a href="#" data-wgoster="${x.no}" data-wsayfa="${ek === 1 ? 2 : 1}">${sE(x.noB)}</a>`}</td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${ek ? 'sayfa ' + ek : 'iki sayfa'}</td></tr>`;
   const rap = wRapor ? `<details class="panel" ${det('wtr', true)}><summary><b class="small">Eksik kâğıtlar</b> <span class="small muted">(${wRapor.yarimL.length + wRapor.hicL.length})</span></summary>
-      ${wRapor.yarimL.length + wRapor.hicL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Eksik</th></tr>${wRapor.yarimL.map(x => sat(x, x.eksikSayfa)).join('')}${wRapor.hicL.map(x => sat(x, 0)).join('')}</table></div>
-      <p class="small muted" style="margin:4px 0 0">Hiç taranmayanlar sınava girmemiş olabilir (yoklama listesine bakın). Eksik sayfa varsa o kâğıdı yeniden tarayıp yükleyin; yüklenen sayfa öncekinin yerine geçer.</p>` : '<p class="small" style="margin:6px 0 0">Eksik kâğıt yok.</p>'}</details>` : '';
+      ${wRapor.yarimL.length + wRapor.hicL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small" data-wtablo="eksik"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Eksik</th></tr>${wFiltreSatiri('eksik', wRapor.yarimL.concat(wRapor.hicL), true)}${wRapor.yarimL.map(x => sat(x, x.eksikSayfa)).join('')}${wRapor.hicL.map(x => sat(x, 0)).join('')}</table></div>
+      <p class="small muted" style="margin:4px 0 0"><span data-wsay="eksik"></span> Bir sayfası eksik kâğıtlar listenin başında. Sütun başlıklarının altındaki kutulara yazarak ya da seçerek listeyi daraltabilirsiniz. Hiç taranmayanlar sınava girmemiş olabilir (yoklama listesine bakın). Eksik sayfa varsa o kâğıdı yeniden tarayıp yükleyin; yüklenen sayfa öncekinin yerine geçer.</p>` : '<p class="small" style="margin:6px 0 0">Eksik kâğıt yok.</p>'}</details>` : '';
   const tl = wRapor && wRapor.taranL ? `<details class="panel" ${det('wtl', false)}><summary><b class="small">Taranan kâğıtlar</b> <span class="small muted">(${wRapor.taranL.length})</span></summary>
-      ${wRapor.taranL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Yüklenen sayfalar</th></tr>${wRapor.taranL.map(x => `<tr><td><a href="#" data-wgoster="${x.no}" data-wsayfa="${x.sayfalar[0]}">${sE(x.noB)}</a></td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${x.sayfalar.length === 2 ? '1 ve 2 (tam)' : 'yalnız ' + x.sayfalar[0]}</td></tr>`).join('')}</table></div>` : '<p class="small" style="margin:6px 0 0">Henüz taranan kâğıt yok.</p>'}</details>` : '';
+      ${wRapor.taranL.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small" data-wtablo="taranan"><tr><th>Kâğıt no</th><th>Ad soyad</th><th>Öğrenci no</th><th>Derslik</th><th>Sıra</th><th>Yüklenen sayfalar</th></tr>${wFiltreSatiri('taranan', wRapor.taranL, false)}${wRapor.taranL.map(x => `<tr data-fno="${sE(x.noB)}" data-fad="${sE(String(x.ad).toLocaleLowerCase('tr'))}" data-fogr="${sE(x.ogr)}" data-fder="${sE(x.derslik)}" data-feks="${x.sayfalar.length === 2 ? 'tam' : 'y' + x.sayfalar[0]}"><td><a href="#" data-wgoster="${x.no}" data-wsayfa="${x.sayfalar[0]}">${sE(x.noB)}</a></td><td>${sE(x.ad)}</td><td>${sE(x.ogr)}</td><td>${sE(x.derslik)}</td><td>${x.sira}</td><td>${x.sayfalar.length === 2 ? '1 ve 2 (tam)' : 'yalnız ' + x.sayfalar[0]}</td></tr>`).join('')}</table></div>` : '<p class="small" style="margin:6px 0 0">Henüz taranan kâğıt yok.</p>'}</details>` : '';
   const T2 = wT, un = T2 ? T2.okunamayan.filter(u => !u.kaydedildi) : [];
   const ilerl = T2 ? `<div class="note ${T2.calisiyor ? 'n-hl' : 'n-ok'} small">${T2.calisiyor ? `<span id="wTDurum">İşleniyor: ${sE(T2.durum)} · okunan ${T2.okunan} · kaydedilen ${T2.kaydedilen}</span> – sayfayı kapatmayın.` :
       `Bitti: ${T2.sayfa} sayfa işlendi · ${T2.kaydedilen} sayfa kaydedildi${T2.yeniden ? ' (' + T2.yeniden + ' sayfa öncekinin yerine)' : ''}${T2.kagitDegil ? ' · ' + T2.kagitDegil + ' boş / kâğıt olmayan sayfa atlandı' : ''}${un.length ? ' · <b>' + un.length + ' sayfanın karekodu okunamadı</b> (aşağıda)' : ''}${T2.hatalar.length ? ' · <b>' + T2.hatalar.length + ' sayfa kaydedilmedi</b>' : ''}`}</div>
