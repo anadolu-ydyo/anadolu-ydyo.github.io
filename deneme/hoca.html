@@ -643,7 +643,7 @@ let WK = null, wkA = null, wkF = null, wkMsg = '', wkHata = '', wkRes = {}, wkIn
 async function wkYukle() { try { const r = await run('apiHocaWKagit', ot); if (!r.err) { WK = r; render(); } } catch (e) { } }
 function wkSay() { const L = WK.sinavlar.flatMap(x => x.kagit), p = L.filter(k => k.puan).length; return `${L.length} kâğıt · ${p} puanlandı${p < L.length ? ' · <b>' + (L.length - p) + ' bekliyor</b>' : ''}`; }
 const wkGrup = () => WK && wkA ? WK.sinavlar.find(x => x.sid === wkA.sid && x.rol === wkA.rol) : null;
-function wkPuanMetin(p) { if (!p) return ''; if (p.oz) { const o = WK.oz.find(x => x.k === p.oz); return 'Özel durum: ' + (o ? o.ad : p.oz); } return p.b.join(' · ') + ' = ' + p.b.reduce((a, v) => a + v, 0) + ' / 20'; }
+function wkPuanMetin(p) { if (!p) return ''; if (p.oz) { const o = WK.oz.find(x => x.k === p.oz); return 'Özel durum: ' + (o ? o.ad : p.oz); } if (p.b.some(v => v == null)) return p.b.map((v, i) => v == null ? null : WK.bent[i] + ': ' + v).filter(Boolean).join(' · '); return p.b.join(' · ') + ' = ' + p.b.reduce((a, v) => a + v, 0) + ' / 20'; }
 async function wkResim(sid, no, sayfa) {
   const k = sid + '|' + no + '|' + sayfa; if (wkRes[k]) return;
   wkRes[k] = 'yukleniyor';
@@ -660,8 +660,8 @@ function vWKagitH() {
     return `<div class="panel stack" style="gap:8px"><div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><h3 style="margin:0">${esc(x.sinav)} · writing ${esc(x.rolAd)}${x.lv ? ' · ' + esc(x.lv) + ' düzeyi' : ''}</h3>
       <span class="pill ${p === x.kagit.length ? 'p-ok' : 'p-warn'}">${p} / ${x.kagit.length} kâğıt puanlandı</span></div>
       ${x.tarih ? `<p class="small muted" style="margin:0">Görev tarihi: ${esc(x.tarih)}</p>` : ''}
-      <p class="small muted" style="margin:0">Kâğıtlarda öğrenci bilgisi yoktur; yalnız kâğıt numarası görünür. Notlandırma kördür: diğer grader'ın notunu görmezsiniz. Puanınızı kâğıt 3. grader'a gidene kadar değiştirebilirsiniz.</p>
-      <div class="scroll"><table><thead><tr><th>Kâğıt no</th><th>Sayfa</th><th>Puanınız</th><th></th></tr></thead><tbody>${x.kagit.map(k => `<tr><td class="mono"><b>${esc(k.noB)}</b></td><td class="small">${k.sayfa.length === 2 ? '2 sayfa' : k.sayfa.length ? 'yalnız ' + k.sayfa[0] + '. sayfa' : '–'}</td>
+      <p class="small muted" style="margin:0">Kâğıtlarda öğrenci bilgisi yoktur; yalnız kâğıt numarası görünür. ${x.rol === 3 ? 'Notlandırma kördür: diğer grader\'ların notlarını ve adlarını görmezsiniz. Her kâğıtta yalnız istenen bentleri puanlayın.' : 'Notlandırma kördür: diğer grader\'ın notunu görmezsiniz. Puanınızı kâğıt 3. grader\'a gidene kadar değiştirebilirsiniz.'}</p>
+      <div class="scroll"><table><thead><tr><th>Kâğıt no</th><th>Sayfa</th><th>Puanınız</th><th></th></tr></thead><tbody>${x.kagit.map(k => `<tr><td class="mono"><b>${esc(k.noB)}</b></td><td class="small">${k.sayfa.length === 2 ? '2 sayfa' : k.sayfa.length ? 'yalnız ' + k.sayfa[0] + '. sayfa' : '–'}${x.rol === 3 ? '<br><span class="muted">' + (k.ozel ? 'bütün kâğıt (özel durum)' : 'yalnız ' + esc(k.bent.map(i => WK.bent[i]).join(', '))) + '</span>' : ''}</td>
         <td>${k.puan ? `<span class="pill p-ok">${esc(wkPuanMetin(k.puan))}</span>` : '<span class="pill p-warn">bekliyor</span>'}${k.kilit ? ' <span class="small muted">(3. grader\'da)</span>' : ''}</td>
         <td><button class="btn sm${k.puan ? ' ghost' : ''}" data-act="wkAc" data-sid="${esc(x.sid)}" data-rol="${x.rol}" data-no="${k.no}">${k.puan ? 'Aç' : 'Puanla'}</button></td></tr>`).join('')}</tbody></table></div>
       <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sm ghost" data-act="wkPdf" data-sid="${esc(x.sid)}" data-rol="${x.rol}" data-hep="1">Bütün kâğıtlarımı indir (PDF)</button>${p < x.kagit.length && p ? `<button class="btn sm ghost" data-act="wkPdf" data-sid="${esc(x.sid)}" data-rol="${x.rol}" data-hep="0">Puanlanmamışları indir (PDF)</button>` : ''}</div>
@@ -669,21 +669,25 @@ function vWKagitH() {
 }
 function vWKagitTek(g) {
   const i = g.kagit.findIndex(k => k.no === wkA.no), k = g.kagit[i]; if (!k) { wkA.no = null; return vWKagitH(); }
-  if (!wkF || wkF.no !== k.no) wkF = { no: k.no, b: k.puan && k.puan.b ? k.puan.b.slice() : [0, 0, 0, 0], oz: k.puan ? k.puan.oz : '' };
+  if (!wkF || wkF.no !== k.no) wkF = { no: k.no, b: k.puan && k.puan.b ? k.puan.b.map(v => v || 0) : [0, 0, 0, 0], oz: k.puan ? k.puan.oz : '' };
+  const u3 = g.rol === 3, kismi = u3 && !k.ozel, istek = kismi ? k.bent : [0, 1, 2, 3];
   const resim = p => { const r = wkRes[g.sid + '|' + k.no + '|' + p]; if (!r) { wkResim(g.sid, k.no, p); return '<div class="panel muted small">Sayfa ' + p + ' yükleniyor…</div>'; }
     if (r === 'yukleniyor') return '<div class="panel muted small">Sayfa ' + p + ' yükleniyor…</div>'; if (r.startsWith('hata:')) return '<div class="note n-bad small">Sayfa ' + p + ': ' + esc(r.slice(5)) + '</div>';
     return `<div><div class="small muted">NO ${esc(k.noB)} · sayfa ${p}</div><img src="${r}" alt="Kâğıt ${esc(k.noB)} sayfa ${p}" style="width:100%;border:1px solid var(--line, #ccc);background:#fff"></div>`; };
-  const bent = WK.bent.map((ad, j) => `<div><div class="small"><b>${esc(ad)}</b></div><div class="row" style="gap:4px;flex-wrap:nowrap">${[1, 2, 3, 4, 5].map(v => `<button class="btn sm${wkF.b[j] === v && !wkF.oz ? '' : ' ghost'}" style="min-width:38px" data-act="wkB" data-j="${j}" data-v="${v}" ${k.kilit ? 'disabled' : ''}>${v}</button>`).join('')}</div></div>`).join('');
+  const bent = WK.bent.map((ad, j) => istek.includes(j) ? `<div><div class="small"><b>${esc(ad)}</b></div><div class="row" style="gap:4px;flex-wrap:nowrap">${[1, 2, 3, 4, 5].map(v => `<button class="btn sm${wkF.b[j] === v && !wkF.oz ? '' : ' ghost'}" style="min-width:38px" data-act="wkB" data-j="${j}" data-v="${v}" ${k.kilit ? 'disabled' : ''}>${v}</button>`).join('')}</div></div>`
+    : `<div class="small muted">${esc(ad)}: bu bent sizden istenmiyor</div>`).join('');
   const top = wkF.b.every(v => v) ? wkF.b.reduce((a, v) => a + v, 0) : null;
+  const u3not = !u3 ? '' : kismi ? `<div class="note n-hl small"><b>Bu kâğıdı yalnızca ${esc(istek.map(i => WK.bent[i]).join(', '))} açısından değerlendirin.</b> Diğer grader'ların notlarını ve adlarını görmezsiniz.</div>`
+    : `<div class="note n-hl small"><b>${esc(WK.ozelUyari)}</b> Diğer grader'ların notlarını ve adlarını görmezsiniz.</div>`;
   return `<div class="stack"><div class="panel row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><div><div class="small muted">${esc(g.sinav)} · writing ${esc(g.rolAd)} · kâğıt ${i + 1} / ${g.kagit.length}</div><h2 style="margin:0" class="mono">NO ${esc(k.noB)}</h2></div>
     <div class="row" style="gap:6px"><button class="btn sm ghost" data-act="wkGit" data-d="-1" ${i ? '' : 'disabled'}>‹ Önceki</button><button class="btn sm ghost" data-act="wkGit" data-d="1" ${i < g.kagit.length - 1 ? '' : 'disabled'}>Sonraki ›</button><button class="btn sm ghost" data-act="wkListe">Listeye dön</button></div></div>
     <div class="wkduz">
       <div class="stack">${k.sayfa.length ? k.sayfa.map(resim).join('') : '<div class="note n-hl">Bu kâğıdın sayfaları henüz taranmadı.</div>'}${k.sayfa.length === 1 ? `<div class="note n-hl small">Bu kâğıdın ${k.sayfa[0] === 1 ? '2.' : '1.'} sayfası henüz taranmadı. Sınav birimi yüklediğinde burada görünür.</div>` : ''}</div>
       <div class="panel stack" style="gap:10px;align-self:start;position:sticky;top:8px">
         ${k.kilit ? '<div class="note n-hl small">Bu kâğıt 3. grader\'a gitti; puanınız artık değiştirilemez.</div>' : ''}
-        ${bent}
-        <label class="f small" style="margin:0">Özel durum<select id="wkOz" ${k.kilit ? 'disabled' : ''}><option value="">Yok (normal puanlama)</option>${WK.oz.map(o => `<option value="${o.k}" ${wkF.oz === o.k ? 'selected' : ''}>${esc(o.ad)} → ${o.n}</option>`).join('')}</select></label>
-        <div class="small">${wkF.oz ? '<b>Özel durum seçildi</b>; bent puanları kaydedilmez.' : top != null ? `Toplam: <b>${top} / 20</b> (${top * 5} / 100)` : 'Dört bendin hepsini puanlayın.'}</div>
+        ${u3not}${bent}
+        ${kismi ? '' : `<label class="f small" style="margin:0">Özel durum<select id="wkOz" ${k.kilit ? 'disabled' : ''}><option value="">Yok (normal puanlama)</option>${WK.oz.map(o => `<option value="${o.k}" ${wkF.oz === o.k ? 'selected' : ''}>${esc(o.ad)} → ${o.n}</option>`).join('')}</select></label>`}
+        <div class="small">${wkF.oz ? '<b>Özel durum seçildi</b>; bent puanları kaydedilmez.' : u3 ? (istek.every(i => wkF.b[i]) ? 'İstenen bentler puanlandı.' : 'İstenen bentlerin hepsini puanlayın.') : top != null ? `Toplam: <b>${top} / 20</b> (${top * 5} / 100)` : 'Dört bendin hepsini puanlayın.'}</div>
         ${wkHata ? `<div class="note n-bad small">${esc(wkHata)}</div>` : ''}${wkMsg ? `<div class="note n-ok small">${esc(wkMsg)}</div>` : ''}
         <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn" data-act="wkKaydet" data-son="1" ${k.kilit ? 'disabled' : ''}>Kaydet ve sonraki</button><button class="btn ghost" data-act="wkKaydet" data-son="0" ${k.kilit ? 'disabled' : ''}>Kaydet</button></div>
         ${k.puan ? `<div class="small muted">Kayıtlı puanınız: ${esc(wkPuanMetin(k.puan))}${k.zaman ? ' · ' + esc(k.zaman) : ''}</div>` : ''}
@@ -711,9 +715,9 @@ async function wkPdf(sid, rol, hep) {
   render(true);
 }
 async function wkKaydet(sonraki) {
-  const g = wkGrup(), oz = ($('#wkOz') || {}).value || ''; wkF.oz = oz;
-  if (!oz && !wkF.b.every(v => v)) { wkHata = 'Dört bendin hepsini puanlayın ya da bir özel durum seçin.'; wkMsg = ''; return render(true); }
-  try { const r = await run('apiHocaWKagitIslem', ot, 'puan', { sid: g.sid, no: wkA.no, rol: g.rol, b: oz ? null : wkF.b, oz });
+  const g = wkGrup(), oz = ($('#wkOz') || {}).value || '', k = g.kagit.find(x => x.no === wkA.no), istek = g.rol === 3 && !k.ozel ? k.bent : [0, 1, 2, 3]; wkF.oz = oz;
+  if (!oz && !istek.every(i => wkF.b[i])) { wkHata = g.rol === 3 && !k.ozel ? 'İstenen bentlerin hepsini puanlayın.' : 'Dört bendin hepsini puanlayın ya da bir özel durum seçin.'; wkMsg = ''; return render(true); }
+  try { const r = await run('apiHocaWKagitIslem', ot, 'puan', { sid: g.sid, no: wkA.no, rol: g.rol, b: oz ? null : wkF.b.map((v, i) => istek.includes(i) ? v : null), oz });
     if (r.err === 'OTURUM') { ot = null; return yukle(); }
     if (r.hata) { wkHata = r.hata; wkMsg = ''; if (r.sinavlar) WK = r; return render(true); }
     WK = r; wkHata = ''; wkMsg = r.mesaj || ''; wkF = null;

@@ -951,21 +951,32 @@ function vWTarama() {
     ${oz ? `<div class="small">${oz}</div>` : ''}${ilerl}${tl}${rap}</div></details>`;
 }
 /* ---------- Kâğıtları grader'lara dağıtma (S19 4. adım; 27.11.2026) ---------- */
-let wGrad = null, wGradSid = '', wDMsg = '';
+let wGrad = null, wGradSid = '', wDMsg = '', wU = null, wUSec = {}, wUMsg = '';
 async function wGradAl() { const r = await run('apiSinavIslem', ot, 'wKagitGradDurum', { id: SD.id }); if (!r.err && !r.hata) { wGrad = r.grad; wGradSid = SD.id; } }
 function vWDagit() {
   const W = SD.writing, T = W.tarama; if (!W.kagit || !T || !T.sayfa) return '';
   const G0 = W.grad; if (G0 && wGradSid !== SD.id) { wGradSid = SD.id; wGrad = null; wDMsg = ''; wGradAl().then(() => render()); }
   const G = wGrad || G0;
   const oz = G ? `${G.kagit} kâğıt dağıtıldı · grader-1 puanı ${G.puan1}/${G.kagit} · grader-2 puanı ${G.puan2}/${G.kagit} · not kesin ${G.tamam || 0} · 3. grader'a gidecek ${G.ucuncu || 0} · bildirim ${G.bildirim || 0} · bekliyor ${G.bekliyor || 0}` : '';
-  const tablo = wGrad && wGrad.grader ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Grader</th><th>Görev</th><th>Düzey</th><th>Atanan</th><th>Puanlanan</th><th>Farklı eş</th></tr>${wGrad.grader.map(g => `<tr><td>${sE(g.ad)}</td><td>grader-${g.rol}</td><td>${sE(g.lv || '–')}</td><td>${g.atanan}</td><td>${g.puan}</td><td>${g.es}</td></tr>`).join('')}</table></div>
+  const tablo = wGrad && wGrad.grader ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Grader</th><th>Görev</th><th>Düzey</th><th>Atanan</th><th>Puanlanan</th><th>Farklı eş</th></tr>${wGrad.grader.map(g => `<tr><td>${sE(g.ad)}</td><td>${g.rol === 3 ? '3. grader' : 'grader-' + g.rol}</td><td>${sE(g.lv || '–')}</td><td>${g.atanan}</td><td>${g.puan}</td><td>${g.es == null ? '–' : g.es}</td></tr>`).join('')}</table></div>
       <p class="small muted" style="margin:4px 0 0">"Farklı eş": o grader'ın kâğıtlarının giden olduğu karşı grup grader sayısı (eşler karışık). Grader'lar eşlerinin adını görmez.</p>` : '';
   return `<details class="panel" ${det('wdg', !!G)}><summary><b class="small">Kâğıtları grader'lara dağıt</b> <span class="small muted">${G ? '(' + G.kagit + ' kâğıt dağıtıldı)' : '(henüz dağıtılmadı)'}</span></summary><div class="stack" style="margin-top:8px">
     <p class="small muted" style="margin:0">Görev listesindeki "Writing grader-1" ve "Writing grader-2" satırlarına göre taranmış kâğıtlar kâğıt kâğıt bölüştürülür (hazırlıkta düzey düzey; satırdaki "· N kâğıt" payına göre). Eşler karışıktır: bir grader-1'in kâğıtları farklı grader-2'lere gider. Var olan atamalar değişmez; sonradan taranan kâğıtlar için yeniden "Dağıt" deyin. Görevi alınan (mazeret) grader'ın puanlamadığı kâğıtlar başkasına geçer. Hocalar kâğıtları portalda "Writing kâğıtlarım"da görür (portal bildirimi gider; e-posta gönderilmez).</p>
     ${wDMsg ? `<div class="note n-ok small">${sE(wDMsg)}</div>` : ''}
     <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><label class="ck small"><input type="checkbox" id="wDYarim"> Bir sayfası eksik kâğıtları da dağıt</label>
       <button class="btn sm" data-wact="dagit">${G ? 'Yeni kâğıtları dağıt' : 'Kâğıtları dağıt'}</button>${G ? '<button class="btn sm ghost" data-wact="gradDurum">Durumu yenile</button>' : ''}${G && !G.puan1 && !G.puan2 ? '<button class="btn sm ghost" data-wact="dagitSifir">Dağıtımı sıfırla ve yeniden dağıt</button>' : ''}</div>
-    ${oz ? `<div class="small">${oz}</div>` : ''}${tablo}</div></details>`;
+    ${oz ? `<div class="small">${oz}</div>` : ''}${tablo}${G ? vWUcuncu(G) : ''}</div></details>`;
+}
+function vWUcuncu(G) {
+  const U = wU && wU.sid === SD.id ? wU : null, DUR = { tamam: 'not kesin', bildirim: 'bildirim (birim karar verir)', ucuncu: 'puan bekleniyor', bekliyor: 'bekliyor' };
+  const oner = U && U.gerek.length ? `<div style="overflow:auto;max-height:320px"><table class="tbl small"><tr><th>Kâğıt no</th><th>Bakılacak bentler</th><th>3. grader</th></tr>${U.gerek.map(k => `<tr><td>${sE(k.noB)}</td><td>${sE(k.bentAd)}</td><td>${k.adaylar.length ? `<select data-wu="${k.no}" style="width:auto"><option value="">– atama –</option>${k.adaylar.map(a => `<option value="${sE(a.e)}" ${(wUSec[k.no] ?? k.oneri) === a.e ? 'selected' : ''}>${sE(a.ad)} (yıl boyu ${a.yil} kâğıt)</option>`).join('')}</select>` : '<span class="small">uygun aday yok</span>'}</td></tr>`).join('')}</table></div>
+      <div class="row" style="gap:8px"><button class="btn sm" data-wact="u3ata">Onayla ve 3. grader'lara gönder</button></div>` : U ? '<p class="small" style="margin:0">Şu an 3. grader\'a gönderilecek yeni kâğıt yok.</p>' : '';
+  const at = U && U.atanmis.length ? `<div style="overflow:auto;max-height:240px"><table class="tbl small"><tr><th>Kâğıt no</th><th>3. grader</th><th>Bentler</th><th>Puan</th><th>Sonuç</th></tr>${U.atanmis.map(a => `<tr><td>${sE(a.noB)}</td><td>${sE(a.ad)}</td><td>${a.bentler.length === 4 ? 'bütün kâğıt' : a.bentler.map(i => ['Content', 'Organization', 'Grammatical Competence', 'Lexical Competence'][i]).join(', ')}</td><td>${a.puan ? 'girildi' : 'bekleniyor'}</td><td>${sE(DUR[a.durum] || a.durum)}</td></tr>`).join('')}</table></div>` : '';
+  return `<div class="panel stack" style="gap:8px"><b class="small">3. grader</b>
+    <p class="small muted" style="margin:0">İki grader arasında bir bentte 2 ya da daha fazla fark (ya da özel durum uyuşmazlığı) olan kâğıtlar, görev listesindeki "Olası 3. grader"lardan birine gönderilir: o kâğıdın grader-1/2'si olmayan, yıl boyu en az kâğıt okuyan önce (kişi başı en çok ${U ? U.kisi : 10} kâğıt). 3. grader yalnız istenen bentleri görür ve puanlar; diğer grader'ların notlarını ve adlarını görmez. Öneriyi değiştirebilirsiniz.</p>
+    ${wUMsg ? `<div class="note n-ok small">${sE(wUMsg)}</div>` : ''}${U && U.uyari.length ? `<div class="note n-hl small">${U.uyari.map(sE).join('<br>')}</div>` : ''}
+    <div class="row" style="gap:8px"><button class="btn sm ${U ? 'ghost' : ''}" data-wact="u3oner">3. grader önerisini hazırla</button>${G.ucuncu ? `<span class="small">${G.ucuncu} kâğıt 3. grader'da ya da bekliyor</span>` : ''}</div>
+    ${U ? `<div class="small muted">Olası 3. grader sayısı: ${U.olasi}${U.olasi ? '' : ' – görev listesine "Olası 3. grader" satırı ekleyin'}</div>` : ''}${oner}${at}</div>`;
 }
 async function wGosterAc(no, sayfa, orj) {
   const r = await run('apiSinavIslem', ot, 'wKagitTaramaGoster', { id: SD.id, no, sayfa, orj }); if (r.err || r.hata) return bilgi(r.hata || r.err);
@@ -1063,7 +1074,7 @@ async function wListeIndir() {
   const K = r.kagit, rows = [[SD.ad + ' – Writing kâğıt numaraları (GİZLİ: numara → öğrenci eşleşmesi; grader\'larla paylaşılmaz)'], [], ['Kâğıt no', 'Öğrenci no', 'Ad Soyad', 'Düzey', 'Sınıf', 'Derslik', 'Sıra']].concat(K.liste.map(k => [k.noB, k.ogr, k.ad, k.lv, k.cls, k.derslik, k.sira]));
   const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(rows); XLSX.utils.book_append_sheet(wb, ws, 'Kâğıt numaraları'); XLSX.writeFile(wb, SD.ad + ' – Writing kâğıt numaraları (GİZLİ).xlsx');
 }
-document.addEventListener('change', e => { if (e.target.id === 'wDerslik') wDerslik = e.target.value; if (e.target.dataset && e.target.dataset.wab && wAy) wAySet(e.target.dataset.wab, e.target.checked); });
+document.addEventListener('change', e => { if (e.target.dataset && e.target.dataset.wu) wUSec[e.target.dataset.wu] = e.target.value; if (e.target.id === 'wDerslik') wDerslik = e.target.value; if (e.target.dataset && e.target.dataset.wab && wAy) wAySet(e.target.dataset.wab, e.target.checked); });
 document.addEventListener('input', e => { const p = e.target.dataset && e.target.dataset.wa; if (p && wAy) wAySet(p, e.target.value); });
 document.addEventListener('click', async e => {
   const el = e.target.closest('[data-wact]'); if (!el || el.disabled || !SD) return; const d = el.dataset;
@@ -1084,6 +1095,13 @@ document.addEventListener('click', async e => {
       el.disabled = true; const r = await run('apiSinavIslem', ot, 'wKagitDagit', { id: SD.id, yarim: yar, sifirla: sif }); el.disabled = false; if (r.err || r.hata) return bilgi(r.hata || r.err);
       if (r.sinav) { SD.writing = r.sinav.writing; SD.rev = r.sinav.rev; SD.gecmis = r.sinav.gecmis; } wGrad = r.grad; wGradSid = SD.id; wDMsg = r.mesaj || ''; render(); }
     if (d.wact === 'gradDurum') { await wGradAl(); wDMsg = ''; render(); }
+    if (d.wact === 'u3oner') { el.disabled = true; const r = await run('apiSinavIslem', ot, 'wKagitUcuncuOneri', { id: SD.id }); el.disabled = false; if (r.err || r.hata) return bilgi(r.hata || r.err); wU = Object.assign(r.ucuncu, { sid: SD.id }); wUSec = {}; wUMsg = ''; render(); }
+    if (d.wact === 'u3ata') {
+      const plan = wU.gerek.map(k => ({ no: k.no, e: wUSec[k.no] ?? k.oneri })).filter(p => p.e);
+      if (!plan.length) return bilgi('3. grader seçilmedi.');
+      if (!(await onayla(plan.length + ' kâğıt seçilen 3. grader\'lara gönderilsin mi?\n\nHocalara portal bildirimi gider; e-posta gönderilmez.', 'Gönder', 'Vazgeç'))) return;
+      el.disabled = true; const r = await run('apiSinavIslem', ot, 'wKagitUcuncuAta', { id: SD.id, plan }); el.disabled = false; if (r.err || r.hata) return bilgi(r.hata || r.err);
+      wU = Object.assign(r.ucuncu, { sid: SD.id }); wUSec = {}; wUMsg = r.mesaj || ''; wGrad = r.grad; render(); }
   } catch (err) { bilgi((err && err.message) || String(err)); }
 });
 function yListeIndir() {
